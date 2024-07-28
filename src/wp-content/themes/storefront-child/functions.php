@@ -1,0 +1,10 @@
+<?php
+/*
+File Name: Theme Functions PHP file
+Theme Name: Storefront Child Theme
+Version: 1.0
+Description: Child theme for Storefront.
+Author: Bharani Amarnath
+Author URI: bharaniamarnath.wordpress.com
+Theme Template: storefront
+*/
