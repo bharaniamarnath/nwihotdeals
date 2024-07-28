@@ -32,6 +32,7 @@ src/wp-content/plugins/hello.php
 src/wp-content/uploads/
 
 # htaccess
+/.htaccess
 src/.htaccess
 
 #env
