@@ -12,6 +12,7 @@ src/wp-content/languages
 src/wp-content/plugins/index.php
 src/wp-content/themes/index.php
 src/wp-includes/
+src/wp-content/ai1wm-backups/
 src/index.php
 src/license.txt
 src/readme.html
@@ -21,10 +22,10 @@ src/xmlrpc.php
 # Configuration
 src/wp-config.php
 
-# Example themes
+# Themes
 src/wp-content/themes/twenty*/
 
-# Example plugin
+# Plugin
 src/wp-content/plugins/hello.php
 
 # Uploads
@@ -43,8 +44,7 @@ src/.htaccess
 #
 # Note: If you wish to whitelist themes,
 # uncomment the next line
-src/wp-content/themes/twenty*
-src/wp-content/themes/storefront
+src/wp-content/themes/storefront/
 
 # Node dependency directories (Used by Grunt)
 src/node_modules/
@@ -81,6 +81,3 @@ backup/
 
 # All manual backup databases
 database/
-
-# Other files
-src/wp-content/ai1wm-backups/
