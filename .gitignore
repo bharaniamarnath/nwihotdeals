@@ -43,7 +43,8 @@ src/.htaccess
 #
 # Note: If you wish to whitelist themes,
 # uncomment the next line
-#src/wp-content/themes
+src/wp-content/themes/twenty*
+src/wp-content/themes/storefront
 
 # Node dependency directories (Used by Grunt)
 src/node_modules/
@@ -80,3 +81,6 @@ backup/
 
 # All manual backup databases
 database/
+
+# Other files
+src/wp-content/ai1wm-backups/
