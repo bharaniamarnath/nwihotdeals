@@ -34,6 +34,9 @@ src/wp-content/uploads/
 # htaccess
 src/.htaccess
 
+#env
+/.env
+
 # All plugins
 #
 # Note: If you wish to whitelist plugins,
