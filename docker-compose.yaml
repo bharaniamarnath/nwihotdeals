@@ -2,7 +2,9 @@ services:
   db:
     image: mysql:latest
     ports:
-      - "${MYSQL_PORT}:${MYSQL_PORT}"
+      - ${MYSQL_PORT}:${MYSQL_PORT}
+    expose:
+      - ${MYSQL_PORT}
     restart: always
     environment:
       - MYSQL_HOST=${MYSQL_HOST}
@@ -17,10 +19,8 @@ services:
       - nwihotdeals
   wp:
     image: wordpress:latest
-    expose:
-      - 80
     ports:
-      - "${WP_PORT}:${SERVER_HTTP_PORT}"
+      - ${WP_PORT}:${SERVER_HTTP_PORT}
     restart: always
     depends_on:
       - db
@@ -36,7 +36,7 @@ services:
   pma:
     image: phpmyadmin
     ports:
-      - "${PMA_PORT}:${SERVER_HTTP_PORT}"
+      - ${PMA_PORT}:${SERVER_HTTP_PORT}
     restart: always
     environment:
       - PMA_HOST=db
@@ -45,6 +45,7 @@ services:
       - PMA_PASSWORD=${MYSQL_PASSWORD}
       - PMA_HOST=db
       - PMA_ARBITRARY=1
+      - UPLOAD_LIMIT=256M
     depends_on:
       - db
     networks:
