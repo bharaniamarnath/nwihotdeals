@@ -30,7 +30,7 @@ services:
       - WORDPRESS_DB_PASSWORD=${MYSQL_PASSWORD}
       - WORDPRESS_DB_NAME=${MYSQL_DATABASE}
     volumes:
-      - ./src/:/var/www/html/
+      - wp_data:/var/www/html/
     networks:
       - nwihotdeals
   pma:
@@ -52,5 +52,6 @@ services:
       - nwihotdeals
 volumes:
   mysql_data:
+  wp_data:
 networks:
   nwihotdeals:
