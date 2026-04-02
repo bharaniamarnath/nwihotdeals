@@ -76,6 +76,15 @@ abstract class Kucrut_Form_Field {
 	);
 
 	/**
+	 * URL path to this directory
+	 *
+	 * @since  0.1.0
+	 * @var    string
+	 * @access protected
+	 */
+	protected static $url_path;
+
+	/**
 	 * Holds allowed html tags
 	 *
 	 * @since  0.1.0
@@ -114,6 +123,15 @@ abstract class Kucrut_Form_Field {
 	 */
 	protected $attributes = array();
 
+	/**
+	 * Holds field arguments
+	 *
+	 * @since  0.1.0
+	 * @var    stdClass
+	 * @access protected
+	 */
+	protected $args;
+
 
 	/**
 	 * Loader
@@ -149,6 +167,7 @@ abstract class Kucrut_Form_Field {
 		) {
 			trigger_error(
 				sprintf(
+					// translators: %1$s - the name of the class, %2$s - the type of the field.
 					esc_html__( '%1$s: Type %2$s is not supported, reverting to text.', 'menu-icons' ),
 					__CLASS__,
 					esc_html( $field['type'] )
@@ -382,6 +401,13 @@ class Kucrut_Form_Field_Textarea extends Kucrut_Form_Field {
 		'cols'  => 50,
 		'rows'  => 5,
 	);
+
+
+	protected function set_properties() {
+		if ( ! is_string( $this->field['value'] ) ) {
+			$this->field['value'] = '';
+		}
+	}
 
 
 	public function render() {

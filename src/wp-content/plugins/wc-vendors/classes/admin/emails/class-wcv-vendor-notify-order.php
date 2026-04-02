@@ -1,5 +1,13 @@
 <?php
 
+/**
+ * Notify Admin Shipped
+ *
+ * @version 2.6.5 - Fix security issues.
+ *
+ * @phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedClassFound
+ * @phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
+ */
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
@@ -75,9 +83,10 @@ if ( ! class_exists( 'WCVendors_Vendor_Notify_Order' ) ) :
             $this->template_plain = 'emails/plain/vendor-notify-order.php';
             $this->template_base  = dirname( dirname( dirname( __DIR__ ) ) ) . '/templates/';
             $this->placeholders   = array(
-                '{site_title}'   => $this->get_blogname(),
-                '{order_date}'   => '',
-                '{order_number}' => '',
+                '{site_title}'    => $this->get_blogname(),
+                '{order_date}'    => '',
+                '{order_number}'  => '',
+                '{customer_name}' => '',
             );
             $this->recipient      = '';
 
@@ -134,9 +143,10 @@ if ( ! class_exists( 'WCVendors_Vendor_Notify_Order' ) ) :
             $this->vendors = WCV_Vendors::get_vendors_from_order( $order );
 
             if ( is_a( $order, 'WC_Order' ) ) {
-                $this->object                         = $order;
-                $this->placeholders['{order_date}']   = wc_format_datetime( $this->object->get_date_created() );
-                $this->placeholders['{order_number}'] = $this->object->get_order_number();
+                $this->object                          = $order;
+                $this->placeholders['{order_date}']    = wc_format_datetime( $this->object->get_date_created() );
+                $this->placeholders['{order_number}']  = $this->object->get_order_number();
+                $this->placeholders['{customer_name}'] = $this->object->get_billing_first_name() . ' ' . $this->object->get_billing_last_name();
             }
 
             if ( $this->is_enabled() && ! empty( $this->vendors ) ) {
@@ -257,7 +267,7 @@ if ( ! class_exists( 'WCVendors_Vendor_Notify_Order' ) ) :
                     'type'        => 'text',
                     'desc_tip'    => true,
                     /* translators: %s: list of placeholders */
-                    'description' => sprintf( __( 'Available placeholders: %s', 'wc-vendors' ), '<code>{site_title}, {order_date}, {order_number}</code>' ),
+                    'description' => sprintf( __( 'Available placeholders: %s', 'wc-vendors' ), '<code>{site_title}, {order_date}, {order_number}, {customer_name}</code>' ),
                     'placeholder' => $this->get_default_subject(),
                     'default'     => '',
                 ),
@@ -266,7 +276,7 @@ if ( ! class_exists( 'WCVendors_Vendor_Notify_Order' ) ) :
                     'type'        => 'text',
                     'desc_tip'    => true,
                     /* translators: %s: list of placeholders */
-                    'description' => sprintf( __( 'Available placeholders: %s', 'wc-vendors' ), '<code>{site_title}, {order_date}, {order_number}</code>' ),
+                    'description' => sprintf( __( 'Available placeholders: %s', 'wc-vendors' ), '<code>{site_title}, {order_date}, {order_number}, {customer_name}</code>' ),
                     'placeholder' => $this->get_default_heading(),
                     'default'     => '',
                 ),
@@ -302,12 +312,12 @@ if ( ! class_exists( 'WCVendors_Vendor_Notify_Order' ) ) :
             );
         }
 
-		/**
-		 * Filter customer name from address.
-		 *
-		 * @param array $address Address.
-		 */
-		public function filter_customer_name( $address ) {
+        /**
+         * Filter customer name from address.
+         *
+         * @param array $address Address.
+         */
+        public function filter_customer_name( $address ) {
 
             unset( $address['first_name'] );
             unset( $address['last_name'] );

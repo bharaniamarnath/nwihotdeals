@@ -2,6 +2,13 @@
 /**
  *  WC Vendor Admin Dashboard - Vendor WP-Admin Dashboard Pages
  *
+ * @version 2.6.5 - Fix security issues.
+ *
+ * @phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedClassFound
+ * @phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound
+ * @phpcs:disable WordPress.DB.SlowDBQuery.slow_db_query_meta_key
+ * @phpcs:disable WordPress.DB.SlowDBQuery.slow_db_query_meta_value
+ *
  * @package WCVendors
  */
 
@@ -47,7 +54,7 @@ class WCV_Vendor_Admin_Dashboard {
         add_menu_page(
             __( 'Shop Settings', 'wc-vendors' ),
             __( 'Shop Settings', 'wc-vendors' ),
-            'manage_product', // phpcs:ignore
+            'read_products', // phpcs:ignore
             'wcv-vendor-shopsettings',
             array(
                 $this,
@@ -57,7 +64,7 @@ class WCV_Vendor_Admin_Dashboard {
         $hook = add_menu_page(
             __( 'Orders', 'wc-vendors' ),
             __( 'Orders', 'wc-vendors' ),
-            'manage_product', // phpcs:ignore
+            'read_products', // phpcs:ignore
             'wcv-vendor-orders',
             array(
                 'WCV_Vendor_Admin_Dashboard',
@@ -82,6 +89,22 @@ class WCV_Vendor_Admin_Dashboard {
         $has_html         = get_user_meta( $user_id, 'pv_shop_html_enabled', true );
         $shop_page        = WCV_Vendors::get_vendor_shop_page( wp_get_current_user()->user_login );
         $global_html      = wc_string_to_bool( get_option( 'wcvendors_display_shop_description_html', 'no' ) );
+
+        $hide_payout_select         = get_option( 'wcvendors_hide_settings_payment_paypal_payout', 'no' );
+        $hide_paypal_address        = get_option( 'wcvendors_hide_settings_payment_paypal', 'no' );
+        $hide_venmo_id              = get_option( 'wcvendors_hide_settings_payment_paypal_venmo', 'no' );
+        $hide_bank_account_name     = get_option( 'wcvendors_hide_settings_payment_bank_account_name', 'no' );
+        $hide_bank_account_number   = get_option( 'wcvendors_hide_settings_payment_bank_account_number', 'no' );
+        $hide_bank_name             = get_option( 'wcvendors_hide_settings_payment_bank_name', 'no' );
+        $hide_bank_routing_number   = get_option( 'wcvendors_hide_settings_payment_routing_number', 'no' );
+        $hide_bank_iban             = get_option( 'wcvendors_hide_settings_payment_iban', 'no' );
+        $hide_bank_bic_swift        = get_option( 'wcvendors_hide_settings_payment_bic_swift', 'no' );
+        $hide_store_name            = get_option( 'wcvendors_hide_settings_vendor_name', 'no' );
+        $store_name_required        = get_option( 'wcvendors_required_settings_vendor_name', 'no' );
+        $hide_store_description     = get_option( 'wcvendors_hide_settings_store_description', 'no' );
+        $store_description_required = get_option( 'wcvendors_required_settings_store_description', 'no' );
+        $hide_seller_info           = get_option( 'wcvendors_hide_settings_store_seller_info', 'no' );
+        $seller_info_required       = get_option( 'wcvendors_required_settings_store_seller_info', 'no' );
         include 'views/html-vendor-settings-page.php';
     }
 
@@ -123,77 +146,82 @@ class WCV_Vendor_Admin_Dashboard {
 
         if ( isset( $_POST['wc-vendors-nonce'] ) ) {
 
-            if ( ! wp_verify_nonce( $_POST['wc-vendors-nonce'], 'save-shop-settings-admin' ) ) {
+            if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['wc-vendors-nonce'] ) ), 'save-shop-settings-admin' ) ) {
                 return false;
             }
 
             if ( isset( $_POST['pv_paypal'] ) && '' !== $_POST['pv_paypal'] ) {
-                if ( ! is_email( $_POST['pv_paypal'] ) ) {
+                if ( ! is_email( sanitize_text_field( wp_unslash( $_POST['pv_paypal'] ) ) ) ) {
                     $error_msg .= __( 'Your PayPal address is not a valid email address.', 'wc-vendors' );
                     $error      = true;
                 } else {
-                    update_user_meta( $user_id, 'pv_paypal', $_POST['pv_paypal'] );
+                    update_user_meta( $user_id, 'pv_paypal', sanitize_email( sanitize_text_field( wp_unslash( $_POST['pv_paypal'] ) ) ) );
                 }
             } else {
-                update_user_meta( $user_id, 'pv_paypal', $_POST['pv_paypal'] );
+                update_user_meta( $user_id, 'pv_paypal', '' );
             }
 
             if ( ! empty( $_POST['pv_shop_name'] ) ) {
                 $users = get_users(
                     array(
                         'meta_key'   => 'pv_shop_slug',
-                        'meta_value' => sanitize_title( $_POST['pv_shop_name'] ),
+                        'meta_value' => sanitize_title( sanitize_text_field( wp_unslash( $_POST['pv_shop_name'] ) ) ),
                     )
                 );
                 if ( ! empty( $users ) && $users[0]->ID !== $user_id ) {
                     $error_msg .= __( 'That shop name is already taken. Your shop name must be unique.', 'wc-vendors' );
                     $error      = true;
                 } else {
-                    update_user_meta( $user_id, 'pv_shop_name', $_POST['pv_shop_name'] );
-                    update_user_meta( $user_id, 'pv_shop_slug', sanitize_title( $_POST['pv_shop_name'] ) );
+                    update_user_meta( $user_id, 'pv_shop_name', sanitize_text_field( wp_unslash( $_POST['pv_shop_name'] ) ) );
+                    update_user_meta( $user_id, 'pv_shop_slug', sanitize_title( wp_unslash( $_POST['pv_shop_name'] ) ) );
                 }
             }
 
+            $allow_shop_desc_html = wc_string_to_bool( get_option( 'wcvendors_display_shop_description_html', 'no' ) );
+            $allow_markup         = wc_string_to_bool( get_option( 'wcvendors_allow_form_markup', 'no' ) );
+
             if ( isset( $_POST['pv_shop_description'] ) ) {
-                update_user_meta( $user_id, 'pv_shop_description', $_POST['pv_shop_description'] );
+                $striped_description = $allow_shop_desc_html ? wp_kses( $_POST['pv_shop_description'], wcv_allowed_html_tags() ) : wp_strip_all_tags( $_POST['pv_shop_description'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash
+                update_user_meta( $user_id, 'pv_shop_description', $striped_description );
             }
 
             if ( isset( $_POST['pv_seller_info'] ) ) {
-                update_user_meta( $user_id, 'pv_seller_info', $_POST['pv_seller_info'] );
+                $striped_seller_info = $allow_markup ? wp_kses( $_POST['pv_seller_info'], wcv_allowed_html_tags() ) : wp_strip_all_tags( $_POST['pv_seller_info'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash
+                update_user_meta( $user_id, 'pv_seller_info', $striped_seller_info );
             }
 
             // PayPal Masspay wallet.
             if ( isset( $_POST['wcv_paypal_masspay_wallet'] ) ) {
-                update_user_meta( $user_id, 'wcv_paypal_masspay_wallet', sanitize_text_field( $_POST['wcv_paypal_masspay_wallet'] ) );
+                update_user_meta( $user_id, 'wcv_paypal_masspay_wallet', sanitize_text_field( wp_unslash( $_POST['wcv_paypal_masspay_wallet'] ) ) );
             } else {
                 delete_user_meta( $user_id, 'wcv_paypal_masspay_wallet' );
             }
 
             // PayPal Masspay venmo.
             if ( isset( $_POST['wcv_paypal_masspay_venmo_id'] ) ) {
-                update_user_meta( $user_id, 'wcv_paypal_masspay_venmo_id', sanitize_text_field( $_POST['wcv_paypal_masspay_venmo_id'] ) );
+                update_user_meta( $user_id, 'wcv_paypal_masspay_venmo_id', sanitize_text_field( wp_unslash( $_POST['wcv_paypal_masspay_venmo_id'] ) ) );
             } else {
                 delete_user_meta( $user_id, 'wcv_paypal_masspay_venmo_id' );
             }
 
             // Bank details.
             if ( isset( $_POST['wcv_bank_account_name'] ) ) {
-                update_user_meta( $user_id, 'wcv_bank_account_name', $_POST['wcv_bank_account_name'] );
+                update_user_meta( $user_id, 'wcv_bank_account_name', sanitize_text_field( wp_unslash( $_POST['wcv_bank_account_name'] ) ) );
             }
             if ( isset( $_POST['wcv_bank_account_number'] ) ) {
-                update_user_meta( $user_id, 'wcv_bank_account_number', $_POST['wcv_bank_account_number'] );
+                update_user_meta( $user_id, 'wcv_bank_account_number', sanitize_text_field( wp_unslash( $_POST['wcv_bank_account_number'] ) ) );
             }
             if ( isset( $_POST['wcv_bank_name'] ) ) {
-                update_user_meta( $user_id, 'wcv_bank_name', $_POST['wcv_bank_name'] );
+                update_user_meta( $user_id, 'wcv_bank_name', sanitize_text_field( wp_unslash( $_POST['wcv_bank_name'] ) ) );
             }
             if ( isset( $_POST['wcv_bank_routing_number'] ) ) {
-                update_user_meta( $user_id, 'wcv_bank_routing_number', $_POST['wcv_bank_routing_number'] );
+                update_user_meta( $user_id, 'wcv_bank_routing_number', sanitize_text_field( wp_unslash( $_POST['wcv_bank_routing_number'] ) ) );
             }
             if ( isset( $_POST['wcv_bank_iban'] ) ) {
-                update_user_meta( $user_id, 'wcv_bank_iban', $_POST['wcv_bank_iban'] );
+                update_user_meta( $user_id, 'wcv_bank_iban', sanitize_text_field( wp_unslash( $_POST['wcv_bank_iban'] ) ) );
             }
             if ( isset( $_POST['wcv_bank_bic_swift'] ) ) {
-                update_user_meta( $user_id, 'wcv_bank_bic_swift', $_POST['wcv_bank_bic_swift'] );
+                update_user_meta( $user_id, 'wcv_bank_bic_swift', sanitize_text_field( wp_unslash( $_POST['wcv_bank_bic_swift'] ) ) );
             }
 
             do_action( 'wcvendors_shop_settings_admin_saved', $user_id );

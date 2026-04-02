@@ -102,6 +102,17 @@ class Woolentor_Wb_Product_Suggest_Price_Widget extends Widget_Base {
                 ]
             );
 
+            $this->add_control(
+                'submit_button_loading_txt',
+                [
+                    'label' => __( 'Submit Button Loading Text', 'woolentor' ),
+                    'type' => Controls_Manager::TEXT,
+                    'default' => __( 'Submitting...', 'woolentor' ),
+                    'placeholder' => __( 'Submitting...', 'woolentor' ),
+                    'label_block'=>true,
+                ]
+            );
+
             // input field plceholder text
             $this->add_control(
                 'input_placeholder_text',
@@ -843,6 +854,24 @@ class Woolentor_Wb_Product_Suggest_Price_Widget extends Widget_Base {
             $product = wc_get_product( $post->ID );
         }
 
+        // Generate a unique form token for this form instance
+        $form_token = wp_generate_password( 32, false, false );
+
+        // Get recipient email from widget settings (validated)
+        $recipient_email = ! empty( $settings['send_to_mail'] ) ? sanitize_email( $settings['send_to_mail'] ) : get_option( 'admin_email' );
+
+        // Store form data server-side (NOT exposed to client)
+        // This prevents attackers from manipulating the recipient
+        $transient_data = [
+            'recipient_email' => $recipient_email,
+            'product_id'      => $product->get_id(),
+            'msg_success'     => ! empty( $settings['message_success'] ) ? $settings['message_success'] : __( 'Thank you for contacting us', 'woolentor' ),
+            'msg_error'       => ! empty( $settings['message_error'] ) ? $settings['message_error'] : __( 'Something went wrong. Please try again.', 'woolentor' ),
+        ];
+
+        // Store for 1 hour (form session timeout)
+        set_transient( 'woolentor_suggest_price_' . $form_token, $transient_data, HOUR_IN_SECONDS );
+
         $this->add_render_attribute(
             [
 
@@ -851,6 +880,7 @@ class Woolentor_Wb_Product_Suggest_Price_Widget extends Widget_Base {
                     'name'        => 'wlname',
                     'id'          => 'wlname-' . esc_attr( $id ),
                     'placeholder' => $settings['name_placeholder_text'],
+                    'required'    => 'required',
                 ],
 
                 'user_email' => [
@@ -858,14 +888,17 @@ class Woolentor_Wb_Product_Suggest_Price_Widget extends Widget_Base {
                     'name'        => 'wlemail',
                     'id'          => 'wlemail-' . esc_attr( $id ),
                     'placeholder' => $settings['email_placeholder_text'],
+                    'required'    => 'required',
                 ],
 
                 'user_message' => [
                     'name'        => 'wlmessage',
                     'id'          => 'wlmessage-' . esc_attr( $id ),
-                    'rows'          => '4',
-                    'cols'          => '50',
+                    'rows'        => '4',
+                    'cols'        => '50',
                     'placeholder' => $settings['message_placeholder_text'],
+                    'required'    => 'required',
+                    'maxlength'   => '1000',
                 ],
 
                 'user_submit' => [
@@ -874,42 +907,16 @@ class Woolentor_Wb_Product_Suggest_Price_Widget extends Widget_Base {
                     'id'          => 'wlsubmit-' . esc_attr( $id ),
                     'value'       => $settings['submit_button_txt'],
                 ],
-                
+
             ]
         );
 
         ?>
             <div class="wl-suggest-price">
-                <?php
-                    if( isset( $_REQUEST['wlsubmit-'.$id] ) ){
-
-                        if ( ! isset( $_POST['woolentor_suggest_price_nonce_field'] ) || ! wp_verify_nonce( $_POST['woolentor_suggest_price_nonce_field'], 'woolentor_suggest_price_action' ) ){
-                            echo '<p class="wlsendmessage">'.esc_html__('Sorry, your nonce verification fail.','woolentor').'</p>';
-                        }else{
-                            $name     = $_POST['wlname'];
-                            $email    = $_POST['wlemail'];
-                            $message  = $_POST['wlmessage'];
-
-                            //php mailer variables
-                            $sentto  = $settings['send_to_mail'];
-                            $subject = esc_html__("Suggest Price For - ".$product->get_title(), 'woolentor');
-                            $headers = esc_html__('From: ','woolentor'). esc_html( $email ) . "\r\n" . esc_html__('Reply-To: ', 'woolentor') . esc_html( $email ) . "\r\n";
-
-                            //Here put your Validation and send mail
-                            $sent = wp_mail( $sentto, $subject, wp_strip_all_tags($message), $headers );
-
-                            if( $sent ) {
-                                echo '<p class="wlsendmessage">'.esc_html( $settings['message_success'] ).'</p>';
-                            }
-                            else{
-                                echo '<p class="wlsendmessage">'.esc_html($settings['message_error']).'</p>';
-                            }
-                        }
-                    }
-                ?>
-                <button id="wlopenform-<?php echo esc_attr( $id ); ?>" class="wlsugget-button wlopen"><?php echo esc_html__( $settings['open_button_text'], 'woolentor' ); ?></button>
-                <button id="wlcloseform-<?php echo esc_attr( $id ); ?>" class="wlsugget-button wlclose" style="display: none;"><?php echo esc_html__( $settings['close_button_text'], 'woolentor' ); ?></button>
-                <form id="wlsuggestform-<?php echo esc_attr( $id ); ?>" action="<?php echo esc_url( $_SERVER['REQUEST_URI'] ); ?>" method="post">
+                <p class="wlsendmessage">&nbsp;</p>
+                <button id="wlopenform-<?php echo esc_attr( $id ); ?>" class="wlsugget-button wlopen"><?php echo esc_html( $settings['open_button_text'] ); ?></button>
+                <button id="wlcloseform-<?php echo esc_attr( $id ); ?>" class="wlsugget-button wlclose" style="display: none;"><?php echo esc_html( $settings['close_button_text'] ); ?></button>
+                <form id="wlsuggestform-<?php echo esc_attr( $id ); ?>" action="<?php echo esc_url( admin_url('admin-ajax.php') ); ?>" method="post">
                     <div class="wl-suggest-form-input">
                         <input <?php echo $this->get_render_attribute_string( 'user_name' ); ?> >
                     </div>
@@ -922,29 +929,80 @@ class Woolentor_Wb_Product_Suggest_Price_Widget extends Widget_Base {
                     <div class="wl-suggest-form-input">
                         <input <?php echo $this->get_render_attribute_string( 'user_submit' ); ?> >
                     </div>
-                    <?php wp_nonce_field( 'woolentor_suggest_price_action', 'woolentor_suggest_price_nonce_field' ); ?>
+                    <!-- Security: Only pass the token, NOT the recipient email -->
+                    <input type="hidden" name="form_token" value="<?php echo esc_attr( $form_token ); ?>">
+                    <input type="hidden" name="product_id" value="<?php echo esc_attr( $product->get_id() ); ?>">
+                    <input type="hidden" name="action" value="woolentor_suggest_price_action">
+                    <?php wp_nonce_field( 'woolentor_suggest_price_nonce', 'woolentor_suggest_price_nonce_field' ); ?>
                 </form>
-
             </div>
 
             <script type="text/javascript">
                 ;jQuery(document).ready(function($) {
                 "use strict";
 
-                    var open_formbtn = '#wlopenform-<?php echo esc_attr($id); ?>';
-                    var close_formbtn = '#wlcloseform-<?php echo esc_attr($id); ?>';
-                    var terget_form = 'form#wlsuggestform-<?php echo esc_attr($id); ?>';
-                    $( open_formbtn ).on('click', function(){
+                    // Declare Variable
+                    var openFormBtn = '#wlopenform-<?php echo esc_js($id); ?>',
+                        closeFormBtn = '#wlcloseform-<?php echo esc_js($id); ?>',
+                        tergetForm = 'form#wlsuggestform-<?php echo esc_js($id); ?>',
+                        formSubmitBtn = '#wlsubmit-<?php echo esc_js($id); ?>',
+                        submitText   = $(formSubmitBtn).val(),
+                        loadingText  = '<?php echo esc_js($settings['submit_button_loading_txt']); ?>',
+                        formSelector = $(tergetForm);
+
+                    // Open Button
+                    $( openFormBtn ).on('click', function(){
                         $(this).hide();
-                        $(this).siblings( close_formbtn ).show();
-                        $(this).siblings( terget_form ).slideDown('slow');
+                        $(this).siblings( closeFormBtn ).show();
+                        $(this).siblings( tergetForm ).slideDown('slow');
                     });
 
                     // Close Button
-                    $( close_formbtn ).on('click', function(){
+                    $( closeFormBtn ).on('click', function(){
                         $(this).hide();
-                        $(this).siblings( open_formbtn ).show();
-                        $(this).siblings( terget_form ).slideUp('slow');
+                        $(this).siblings( openFormBtn ).show();
+                        $(this).siblings( tergetForm ).slideUp('slow');
+                    });
+
+                    // Submit Using Ajax
+                    $(tergetForm).on('submit', function(e) {
+                        e.preventDefault();
+
+                        $.ajax({
+                            url: formSelector.attr('action'),
+                            type: 'POST',
+                            data: formSelector.serialize(),
+
+                            beforeSend: function (response) {
+                                $(tergetForm).siblings('.wlsendmessage').hide();
+                                $(formSubmitBtn).removeClass('added').addClass('loading').val(loadingText);
+                            },
+
+                            complete: function (response) {
+                                $(formSubmitBtn).addClass('added').removeClass('loading').val(submitText);
+                                $(tergetForm).siblings( openFormBtn ).show();
+                                $(tergetForm).siblings( closeFormBtn ).hide();
+                                $(tergetForm).slideUp('slow');
+                            },
+
+                            success: function (response) {
+                                $(tergetForm).siblings('.wlsendmessage').show().html(response?.data?.message);
+
+                                // Update form token for subsequent submissions (without page refresh)
+                                if (response?.data?.new_token) {
+                                    $(tergetForm).find('input[name="form_token"]').val(response.data.new_token);
+                                }
+
+                                // Clear form fields after successful submission
+                                if (response?.success && !response?.data?.error) {
+                                    $(tergetForm).find('input[name="wlname"]').val('');
+                                    $(tergetForm).find('input[name="wlemail"]').val('');
+                                    $(tergetForm).find('textarea[name="wlmessage"]').val('');
+                                }
+                            },
+
+                        });
+
                     });
 
                 });

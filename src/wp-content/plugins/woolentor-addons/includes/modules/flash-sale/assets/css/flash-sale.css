@@ -2,8 +2,11 @@
   display: block;
 }
 /* Cart page */
-.woocommerce dt.variation-woolentor_cart_flash_sale_label,.woocommerce .variation-woolentor_cart_flash_sale_label.wl-variation-key{
+.woocommerce dt.variation-woolentor_cart_flash_sale_label,.woocommerce .variation-woolentor_cart_flash_sale_label.wl-variation-key,.wc-block-components-product-details__woolentor-cart-flash-sale-label .wc-block-components-product-details__name{
     display: none !important;
+}
+.woocommerce .variation-woolentor_cart_flash_sale_label{
+    margin: 0 !important;
 }
 .woolentor-flashsale-label{
     font-size: 12px;

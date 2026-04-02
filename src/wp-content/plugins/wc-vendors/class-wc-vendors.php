@@ -8,14 +8,15 @@
  * Author URI:           https://www.wcvendors.com
  * GitHub Plugin URI:    https://github.com/wcvendors/wcvendors
  *
- * Version:              2.5.1.1
- * Requires at least:    5.3.0
- * Tested up to:         6.5.4
+ * Version:              2.6.7
+ * Requires at least:    5.5.0
+ * Tested up to:         7.0
  * WC requires at least: 5.0
- * WC tested up to:      8.9.3
+ * WC tested up to:      10.5
  *
  * Text Domain:          wc-vendors
  * Domain Path:          /languages/
+ * License:              GPL2
  *
  * @category             Plugin
  * @copyright            Copyright © 2012 Matt Gates, Copyright © 2021 WC Vendors
@@ -35,6 +36,10 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with WC Vendors Marketplace. If not, see http://www.gnu.org/licenses/gpl-2.0.txt.
+ *
+ * @phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedFunctionFound
+ * @phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
+ * @phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound
  */
 
 use Automattic\WooCommerce\Utilities\FeaturesUtil;
@@ -57,12 +62,13 @@ add_action(
  * Declare Cart and Checkout Blocks Compatibility.
  *
  * @since 2.4.8
+ * @version 2.6.7 - Updated to true after implementing blocks integration.
  */
 add_action(
     'before_woocommerce_init',
     function () {
         if ( class_exists( FeaturesUtil::class ) ) {
-            FeaturesUtil::declare_compatibility( 'cart_checkout_blocks', __FILE__, false );
+            FeaturesUtil::declare_compatibility( 'cart_checkout_blocks', __FILE__, true );
         }
     }
 );
@@ -71,6 +77,12 @@ add_action(
  * Required functions
  */
 require_once trailingslashit( __DIR__ ) . 'classes/includes/class-functions.php';
+require_once trailingslashit( __DIR__ ) . 'classes/class-activation.php';
+require_once trailingslashit( __DIR__ ) . 'classes/class-deactivation.php';
+register_activation_hook( __FILE__, array( 'WCV_Activate', 'activate' ) );
+register_deactivation_hook( __FILE__, array( 'WCV_Deactivate', 'deactivate' ) );
+add_action( 'wcvendors_notice_scheduled_action', 'wcv_trigger_admin_notice' );
+
 
 /**
  * The main WC Vendors plugin class
@@ -97,7 +109,6 @@ class WC_Vendors {
      */
     public function __construct() {
         $this->run();
-        $this->init_hooks();
     }
 
     /**
@@ -108,13 +119,6 @@ class WC_Vendors {
      * @since   2.4.8
      */
     public function run() {
-        /**
-         * Check if WooCommerce is active
-         */
-        if ( ! wcv_is_woocommerce_activated() ) {
-            add_action( 'admin_notices', array( $this, 'wc_vendors_wc_missing_notice' ) );
-            return;
-        }
 
         /* Define an absolute path to our plugin directory. */
         if ( ! defined( 'WCV_PLUGIN_DIR' ) ) {
@@ -136,8 +140,12 @@ class WC_Vendors {
             define( 'WCV_PLUGIN_DIR_PATH', untrailingslashit( plugin_dir_path( __FILE__ ) ) );
         }
 
+        if ( ! defined( 'WCV_PLUGIN_URL' ) ) {
+            define( 'WCV_PLUGIN_URL', trailingslashit( plugin_dir_url( __FILE__ ) ) );
+        }
+
         if ( ! defined( 'WCV_VERSION' ) ) {
-            define( 'WCV_VERSION', '2.5.1.1' );
+            define( 'WCV_VERSION', '2.6.7' );
         }
 
         if ( ! defined( 'WCV_TEMPLATE_BASE' ) ) {
@@ -148,6 +156,10 @@ class WC_Vendors {
             define( 'WCV_ABSPATH_ADMIN', __DIR__ . '/classes/admin/' );
         }
 
+        if ( ! defined( 'WCV_ABSPATH_FRONT' ) ) {
+            define( 'WCV_ABSPATH_FRONT', __DIR__ . '/classes/front/' );
+        }
+
         if ( ! defined( 'WCV_PLUGIN_APPS_PATH' ) ) {
             define( 'WCV_PLUGIN_APPS_PATH', trailingslashit( plugin_dir_url( __FILE__ ) ) . 'apps/' );
         }
@@ -156,72 +168,19 @@ class WC_Vendors {
             define( 'WCV_PLUGIN_FILE', __FILE__ );
         }
 
-        require_once WCV_PLUGIN_DIR . 'classes/class-wc-vendors-bootstrap.php';
-
         $this->version = WCV_VERSION;
-
-        $wc_vendors = new WC_Vendors_Bootstrap();
-    }
-
-    /**
-     * Initialize hooks
-     *
-     * @return void
-     * @version 2.4.8
-     * @since   2.4.8
-     */
-    public function init_hooks() {
-        register_activation_hook( __FILE__, array( $this, 'wcvendors_activate' ) );
-        register_deactivation_hook( __FILE__, array( $this, 'wcvendors_deactivate' ) );
-    }
-
-    /**
-     *   Plugin activation hook
-     */
-    public function wcvendors_activate() {
-        /**
-        *  Requires WooCommerce to be installed and active
-        */
-        if ( ! class_exists( 'WooCommerce' ) ) {
-            add_action( 'admin_notices', array( $this, 'wc_vendors_wc_missing_notice' ) );
-            return;
+        $wcv_boot      = null;
+        if ( maybe_load_new_dashboard() ) {
+            require_once WCV_PLUGIN_DIR . 'classes/class-wc-vendors-bootstrap.php';
+            $wcv_boot = new WC_Vendors_Bootstrap();
+        } else {
+            require_once WCV_PLUGIN_DIR . 'legacy/classes/class-wc-vendors-bootstrap-legacy.php';
+            $wcv_boot = new WC_Vendors_Bootstrap_Legacy();
         }
-        wcvendors_schedule_display_notice( 'cart_and_checkout', 0 );
-        wcvendors_schedule_display_notice( 'review_request', 10 );
-        wcvendors_add_vendor_status_meta_key();
-
-        // Flush rewrite rules when activating plugin.
-        flush_rewrite_rules();
     }
 
     /**
-     * Plugin deactivation hook
-     */
-    public function wcvendors_deactivate() {
-        require_once trailingslashit( __DIR__ ) . 'classes/class-uninstall.php';
-        WCVendors_Uninstall::uninstall();
-    }
-
-    /**
-     * WooCommerce fallback notice.
-     *
-     * @since 2.2.2
-     */
-    public function wc_vendors_wc_missing_notice() {
-        ?>
-        <div class="error">
-            <p>
-                <strong>
-                    <?php esc_html_e( 'WC Vendors Marketplace requires WooCommerce to run. You can download', 'wc-vendors' ); ?>
-                    &nbsp;<a href="https://wordpress.org/plugins/woocommerce/" target="_blank"><?php esc_html_e( 'WooCommerce here', 'wc-vendors' ); ?></a>
-                </strong>
-            </p>
-        </div>
-        <?php
-    }
-
-    /**
-     * Class logger so that we can keep our debug and logging information cleaner
+     * Logger so that we can keep our debug and logging information cleaner
      *
      * @since   2.0.0
      * @version 2.0.0
@@ -237,22 +196,72 @@ class WC_Vendors {
       $caller = ( isset( $trace[1]['class'] ) ) ? $trace[1]['class'] : basename( $trace[1]['file'] );
 
       if ( is_array( $data ) || is_object( $data ) ) {
-        if ( $prefix ) {
-          error_log( '===========================' );
-          error_log( $prefix );
-          error_log( '===========================' );
-        }
-        error_log( $caller . ' : ' . print_r( $data, true ) );
+			if ( $prefix ) {
+			  error_log( '===========================' );
+			  error_log( $prefix );
+			  error_log( '===========================' );
+				}
+			error_log( $caller . ' : ' . print_r( $data, true ) );
       } else {
-        if ( $prefix ) {
-          error_log( '===========================' );
-          error_log( $prefix );
-          error_log( '===========================' );
-        }
-        error_log( $caller . ' : ' . $data );
+			if ( $prefix ) {
+			  error_log( '===========================' );
+			  error_log( $prefix );
+			  error_log( '===========================' );
+				}
+			error_log( $caller . ' : ' . $data );
       }
       // phpcs:enable
     }
 }
 
-$wc_vendors = new WC_Vendors();
+/**
+ * Initialize the plugin
+ *
+ * @since 2.5.2
+ * @version 2.6.5
+ */
+function wcvendors_run() { //phpcs:ignore
+
+    $wcvendors_is_wc_active = in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', get_option( 'active_plugins', array() ) ), true ) // phpcs:ignore
+        || ( is_multisite() && array_key_exists( 'woocommerce/woocommerce.php', get_site_option( 'active_sitewide_plugins', array() ) ) ); // phpcs:ignore
+
+    if ( ! $wcvendors_is_wc_active ) {
+        return;
+    }
+
+    $GLOBALS['wc_vendors'] = new WC_Vendors(); // phpcs:ignore
+}
+
+add_action( 'setup_theme', 'wcvendors_run', 20 );
+
+/**
+ * Schedule the admin notice
+ */
+function wcvendors_schedule_admin_notice() {
+    wcvendors_schedule_display_notice( 'review_request', 14 );
+}
+
+add_action( 'admin_init', 'wcvendors_schedule_admin_notice' );
+
+
+add_action( 'init', 'wcvendors_check_version' );
+
+/**
+ * Since 2.5.6
+ */
+function wcvendors_check_version() {
+
+    if ( ! function_exists( 'get_plugin_data' ) ) {
+        require_once ABSPATH . 'wp-admin/includes/plugin.php';
+    }
+
+    $plugin_data    = get_plugin_data( __FILE__ );
+    $plugin_version = $plugin_data['Version'];
+    $db_version     = get_option( 'wcvendors_version', 0 );
+
+    if ( version_compare( $plugin_version, $db_version, '>' ) ) {
+        WCV_Activate::maybe_create_marketplace_report_cache_table();
+        WCV_Activate::maybe_create_marketplace_report_cache();
+        flush_rewrite_rules();
+    }
+}

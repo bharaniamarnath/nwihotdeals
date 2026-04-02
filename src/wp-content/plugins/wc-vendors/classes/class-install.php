@@ -154,6 +154,7 @@ class WCVendors_Install {
         self::maybe_run_setup_wizard();
         self::update_wcv_version();
         self::maybe_update_db_version();
+        self::create_pages();
 
         delete_transient( 'wcvendors_installing' );
 
@@ -258,12 +259,12 @@ class WCVendors_Install {
             product_id bigint(20) NOT NULL,
             order_id bigint(20) NOT NULL,
             vendor_id bigint(20) NOT NULL,
-            total_due decimal(20,2) NOT NULL,
+            total_due decimal(20,8) NOT NULL,
             qty BIGINT( 20 ) NOT NULL,
-            total_shipping decimal(20,2) NOT NULL,
-            tax decimal(20,2) NOT NULL,
+            total_shipping decimal(20,8) NOT NULL,
+            tax decimal(20,8) NOT NULL,
             status varchar(20) NOT NULL DEFAULT 'due',
-            time datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
+            time datetime DEFAULT CURRENT_TIMESTAMP NOT NULL,
             UNIQUE KEY id (id)
         );";
 
@@ -299,27 +300,8 @@ class WCVendors_Install {
             ''
         );
 
-        $pages = apply_filters(
-            'wcvendors_create_pages',
-            array(
-                'shop_settings'  => array(
-                    'name'    => _x( 'shop_settings', 'Page slug', 'wc-vendors' ),
-                    'title'   => _x( 'Shop Settings', 'Page title', 'wc-vendors' ),
-                    'parent'  => $vendor_dashboard_page_id,
-                    'content' => '[wcv_shop_settings]',
-                ),
-                'product_orders' => array(
-                    'name'    => _x( 'product_orders', 'Page slug', 'wc-vendors' ),
-                    'title'   => _x( 'Orders', 'Page title', 'wc-vendors' ),
-                    'parent'  => $vendor_dashboard_page_id,
-                    'content' => '[wcv_orders]',
-                ),
-            )
-        );
-
-        foreach ( $pages as $key => $page ) {
-            wc_create_page( esc_sql( $page['name'] ), 'wcvendors_' . $key . '_page_id', $page['title'], $page['content'], ! empty( $page['parent'] ) ? $page['parent'] : '' );
-        }
+        // activate setup wizard.
+        add_option( 'wcvendors_admin_notice_install' );
     }
 
     /**
@@ -541,7 +523,7 @@ class WCVendors_Install {
 
         if ( WCV_PLUGIN_BASE === $file ) {
             $row_meta = array(
-                'docs'         => '<a href="' . esc_url( apply_filters( 'wcvendors_docs_url', 'https://docs.wcvendors.com/' ) ) . '" aria-label="' . esc_attr__( 'View WC Vendors documentation', 'wc-vendors' ) . '">' . esc_html__( 'Docs', 'wc-vendors' ) . '</a>',
+                'docs'         => '<a href="' . esc_url( apply_filters( 'wcvendors_docs_url', 'https://www.wcvendors.com/article-categories/wc-vendors/' ) ) . '" aria-label="' . esc_attr__( 'View WC Vendors documentation', 'wc-vendors' ) . '">' . esc_html__( 'Docs', 'wc-vendors' ) . '</a>',
                 'free-support' => '<a href="' . esc_url( apply_filters( 'wcvendors_free_support_url', 'https://wordpress.org/plugins/wc-vendors' ) ) . '" aria-label="' . esc_attr__( 'Visit community forums', 'wc-vendors' ) . '">' . esc_html__( 'Free support', 'wc-vendors' ) . '</a>',
                 'support'      => '<a href="' . esc_url( apply_filters( 'wcvendors_support_url', 'https://www.wcvendors.com/pricing/?utm_source=plugin&utm_medium=settings_page&utm_campaign=premium_support' ) ) . '" aria-label="' . esc_attr__( 'Buy premium customer support', 'wc-vendors' ) . '">' . esc_html__( 'Premium support', 'wc-vendors' ) . '</a>',
                 'pro'          => '<strong><a href="https://www.wcvendors.com/pricing/?utm_source=plugin&utm_medium=settings_page&utm_campaign=upgrade_promo" target="_blank">' . __( 'Upgrade to Pro', 'wc-vendors' ) . '</a></strong>',

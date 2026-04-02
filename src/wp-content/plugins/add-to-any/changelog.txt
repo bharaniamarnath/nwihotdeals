@@ -1,3 +1,20 @@
+= 1.8.16 =
+* Resolve conflict with WPBakery
+* Add `in_the_loop()` and `is_main_query()` context checks for standard placement in content
+
+= 1.8.15 =
+* Fix PHP notice when used with the Complianz plugin
+
+= 1.8.14 =
+* Update Threads follow button to link to threads.com instead of threads.net
+
+= 1.8.13 =
+* Fix defaults in settings
+
+= 1.8.12 =
+* Add Steam follow button
+* Add Twitch follow button
+
 = 1.8.11 =
 * Update AddToAny core script loading
 * Add changelog.txt to the plugin directory

@@ -2,8 +2,8 @@
 Contributors: templateinvaders
 Tags: woocommerce, wishlist, woocommerce wishlist, shop, ecommerce
 Requires at least: 6.1
-Tested up to: 6.4
-Stable tag: 2.8.2
+Tested up to: 6.8
+Stable tag: 2.11.1
 Requires PHP: 7.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -124,6 +124,9 @@ There are several ways to install TI WooCommerce Wishlist:
 + After the installation is complete, click the "Activate" link (Plugins > Installed Plugins).
 
 == Frequently Asked Questions ==
+= Where do I report security bugs found in this plugin? =
+
+Please report security bugs found in the source code of the TI WooCommerce Wishlist plugin through the [Patchstack Vulnerability Disclosure  Program](https://patchstack.com/database/vdp/093f0b5c-b04d-4943-8308-f249da70ddad). The Patchstack team will assist you with verification, CVE assignment, and notify the developers of this plugin.
 
 = Where can I find documentation? =
 
@@ -158,40 +161,66 @@ Yes, you can! Join in on our [GitHub repository](https://github.com/TemplateInva
 
 
 == Changelog ==
-= 2.8.2 =
-*Release Date - 3 March 2024*
+= 2.11.1 =
+*Release Date - 19 November 2025*
 
-- **Added**: Support for PHP 8.3
-- **Added**: Integration with [WP Armour - Honeypot Anti Spam](https://wordpress.org/plugins/honeypot/) plugin
+* **Added:** Support for WooCommerce 10.3.x
+* **Fixed:** REST API — secure guest wishlist write access using `share_key` + nonce, enforce owner-only access for user wishlists, update routes, and improve WPCS compliance
+* **Fixed:** Deferred loading of the wishlist textdomain to the `init` hook to avoid the early `_load_textdomain_just_in_time` notice
+* **Fixed:** Prevented `share_key` access to authenticated-user wishlists and stripped HTML from item meta
+* **Fixed:** Restricted the REST API `get_by_user` endpoint to authorized users only
+* **Fixed:** XSS vulnerability in the wishlist counter shortcode and template
+* **Fixed:** Various PHP warnings for compatibility with PHP 7.4–8.4
 
-= 2.8.1 =
-*Release Date - 21 February 2024*
+= 2.10.0 =
+*Release Date - 5 June 2025*
 
-- **Added**: Support for WooCommerce 8.6.x
-- **Added**: Wishlist creation for guests via REST API. Use the route wp-json/wc/v3/wishlist/get_by_user/0
-- **Fixed**: PHP warning in wishlist products counter
-- **Fixed**: PHP error on plugin uninstall
-- **Removed**: Network activation restriction
-- **Fixed**: Issue with REST API get products request arguments
+- **Added**: Support for WordPress 6.8.x
+- **Added**: Support for WooCommerce 9.8.x
+- **Added**: filter 'tinvwl_wishlist_item_meta_hidden_fields'
+- **Updated**: Integration with [YITH WooCommerce Product Bundles](https://wordpress.org/plugins/yith-woocommerce-product-bundles/) plugin
+- **Updated**: Integration with [YITH WooCommerce Quick View](https://wordpress.org/plugins/yith-woocommerce-quick-view/) plugin
+- **Updated**: Integration with [WPC Variations Radio Buttons for WooCommerce](https://wordpress.org/plugins/wpc-variations-radio-buttons/) plugin
+- **Updated**: Integration with [WPC Product Bundles for WooCommerce](https://wordpress.org/plugins/woo-product-bundle/) plugin
+- **Updated**: Integration with [WP Multilang – Translation and Multilingual Plugin](https://wordpress.org/plugins/wp-multilang/)
+- **Updated**: Integration with [WP Fastest Cache](https://wordpress.org/plugins/wp-fastest-cache/) plugin
+- **Updated**: Integration with [WP Armour – Honeypot Anti Spam](https://wordpress.org/plugins/honeypot/) plugin
+- **Updated**: Integration with [PW WooCommerce Gift Cards](https://wordpress.org/plugins/pw-woocommerce-gift-cards/) plugin
+- **Updated**: Integration with [Product Options and Price Calculation Formulas for WooCommerce – Uni CPO](https://wordpress.org/plugins/uni-woo-custom-product-options/) plugin
+- **Updated**: Integration with [PPOM – Product Addons & Custom Fields for WooCommerce](https://wordpress.org/plugins/woocommerce-product-addon/) plugin
+- **Updated**: Integration with [Payment Plugins Braintree For WooCommerce](https://wordpress.org/plugins/woo-payment-gateway/) plugin
+- **Updated**: Integration with [myCred – Points Management System For Gamification, Ranks, Badges, and Loyalty Rewards Program](https://wordpress.org/plugins/mycred/) plugin
+- **Updated**: Integration with [Min Max Step Quantity Limits Manager for WooCommerce](https://wordpress.org/plugins/product-quantity-for-woocommerce/) plugin
+- **Updated**: Integration with [GTM4WP – A Google Tag Manager (GTM) plugin for WordPress](https://wordpress.org/plugins/duracelltomi-google-tag-manager/) plugin
+- **Updated**: Integration with [Extra Product Options For WooCommerce | Custom Product Addons and Fields](https://wordpress.org/plugins/woo-extra-product-options/) plugin
+- **Updated**: Integration with [ELEX WooCommerce Catalog Mode](https://wordpress.org/plugins/elex-woocommerce-catalog-mode/) plugin
+- **Updated**: Integration with [Spam protection, Anti-Spam, FireWall by CleanTalk](https://wordpress.org/plugins/cleantalk-spam-protect/) plugin
+- **Updated**: Integration with [Advanced Product Fields (Product Addons) for WooCommerce](https://wordpress.org/plugins/advanced-product-fields-for-woocommerce/) plugin
+- **Fixed**: Vulnerability CVE-2025-47577 by updating integration with [WC Fields Factory](https://wordpress.org/plugins/wc-fields-factory/) plugin
 
+= 2.9.2 =
+*Release Date - 29 November 2024*
 
-= 2.8.0 =
-*Release Date - 24 November 2023*
+- **Added**: Support for WordPress 6.7.x
+- **Added**: Support for WooCommerce 9.4.x
+- **Fixed**: issue with early loaded translation for WP 6.7.x
+- **Fixed**: unauthorized access to the setup wizard page
 
-- **Added**: Support for WordPress 6.4
-- **Added**: Support for WooCommerce 8.3
-- **Added**: Option to erase all data on uninstall
-- **Updated**: Integration with [WPC Product Bundles for WooCommerce](https://wordpress.org/plugins/woo-product-bundle/)
-- **Fixed**: Issue with `alt` attribute of a custom image for products counter icon
-- **Fixed**: 'Add to Cart' button issue for parent product
-- **Fixed**: Scheduled event hooks issue
-- **Fixed**: PHP 8.1 deprecation warnings
-- **Fixed**: Missing space in HTML markup
-- **Fixed**: REST API wishlist data inconsistencies
+= 2.9.1 =
+*Release Date - 22 October 2024*
+
+- **Fixed**: SQL Injection vulnerability related to multilingual plugins
+
+= 2.9.0 =
+*Release Date - 11 October 2024*
+
+- **Added**: Support for WordPress 6.6.x
+- **Added**: Support for WooCommerce 9.3.x
+- **Fixed**: SQL Injection vulnerability
 
 [See the changelog for all versions](https://templateinvaders.com/changelogs/ti-woocommerce-wishlist-plugin-free-changelog/?utm_source=wordpressorg&utm_content=changelog).
 
 == Upgrade Notice ==
 
-= 2.0.0 =
-Major update with new features
+= 2.11.0 =
+**Fixed**: Latest vulnerabilities patched

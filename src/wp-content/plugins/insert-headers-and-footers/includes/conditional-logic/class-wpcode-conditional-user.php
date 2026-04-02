@@ -38,6 +38,26 @@ class WPCode_Conditional_User extends WPCode_Conditional_Type {
 	}
 
 	/**
+	 * Load evaluation-only options (without translations) for frontend use.
+	 * This method is called when translations are not yet loaded to avoid WP 6.7 notices.
+	 *
+	 * @return void
+	 */
+	public function load_evaluation_options() {
+		$this->options = array(
+			'logged_in' => array(
+				'callback' => 'is_user_logged_in',
+			),
+			'user_role' => array(
+				'callback' => array( $this, 'get_user_role' ),
+			),
+			'user_meta' => array(
+				'callback' => null, // Pro feature, no callback in free version.
+			),
+		);
+	}
+
+	/**
 	 * Set the type options for the admin mainly.
 	 *
 	 * @return void
@@ -66,6 +86,17 @@ class WPCode_Conditional_User extends WPCode_Conditional_Type {
 				'type'        => 'select',
 				'options'     => $this->get_options_user_roles(),
 				'callback'    => array( $this, 'get_user_role' ),
+			),
+			'user_meta' => array(
+				'label'       => __( 'User Meta', 'insert-headers-and-footers') . ' (PRO)' ,
+				'description' => __( 'Target users based on user meta values.', 'insert-headers-and-footers' ),
+				'type'        => 'text',
+				'options'     => array(),
+				'upgrade'     => array(
+					'title' => __( 'User Meta is a Pro Feature', 'insert-headers-and-footers' ),
+					'text'  => __( 'Get access to User Meta conditional logic rules by upgrading to PRO today.', 'insert-headers-and-footers' ),
+					'link'  => wpcode_utm_url( 'https://wpcode.com/lite/', 'edit-snippet', 'conditional-logic', 'user-meta' ),
+				),
 			),
 		);
 	}

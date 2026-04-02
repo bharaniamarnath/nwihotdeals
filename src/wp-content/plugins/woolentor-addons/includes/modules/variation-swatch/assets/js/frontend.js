@@ -1,7 +1,7 @@
 /**
  * Swatchly Frontend JS
  */
- ;( function ( $ ) {
+;( function ( $ ) {
 	"use strict";
 
 	if ( typeof swatchly_params === 'undefined' ) {
@@ -607,9 +607,6 @@
 							if( !swatchly_params.is_product ){
 								var $product_thumbnail = $(this).get_product_image_selector();
 
-								let $el_product = $(this).closest('.product');
-								$el_product.backup_product_image();
-	
 								$product_thumbnail.attr('src', variation.image.url);
 								$product_thumbnail.attr('srcset', variation.image.srcset);
 							}
@@ -621,7 +618,7 @@
 
 							// some user use single product add to cart button in the product loop
 							// so we need to reset the image for the product loop
-							if( !swatchly_params.is_product ){
+							if( !swatchly_params.is_product && $(this).closest('.single-product').length === 0 ){
 								let $el_product = $(this).closest('.product');
 								$el_product.reset_to_default_image()
 							}
@@ -696,6 +693,28 @@
 			product_loop.init_variation_form();
 			single_product.init();
 		});
+	});
+
+	/**
+	 * 6. Barn2 WCF Product Filter
+	 */
+	$(window).on('load', function(){
+		if( $('.wcf-filter-form').length && typeof window.wp.hooks.addAction !== 'undefined' ){
+			window.wp.hooks.addAction( 'wcpf.filteringDone', 'namespace', function( config, filteredDOM ){
+				product_loop.prevent_click();
+				product_loop.init_variation_form();
+				single_product.init();
+			} );
+		}
+	});
+
+	/**
+	 * 7. Astra Pro quick view Support
+	 */
+	$( document ).on('ast_quick_view_loader_stop', function(){
+		product_loop.prevent_click();
+		product_loop.init_variation_form();
+		single_product.init();
 	});
 
 	/**

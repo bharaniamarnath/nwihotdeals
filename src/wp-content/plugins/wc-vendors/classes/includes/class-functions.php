@@ -1,5 +1,16 @@
 <?php
 
+/**
+ * WC Vendors Functions Class
+ *
+ * @version 2.6.5 - Fix security issues.
+ *
+ * @phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedFunctionFound
+ * @phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
+ * @phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound
+ * @phpcs:disable WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+ */
+
 use Automattic\WooCommerce\Internal\DataStores\Orders\CustomOrdersTableController;
 use Automattic\WooCommerce\Utilities\OrderUtil;
 
@@ -24,10 +35,6 @@ if ( ! function_exists( 'wcv_is_woocommerce_activated' ) ) {
     }
 }
 
-/*
-*
-*  Get User Role
-*/
 if ( ! function_exists( 'wcv_get_user_role' ) ) {
     /**
      * Get user roole from user id
@@ -42,6 +49,26 @@ if ( ! function_exists( 'wcv_get_user_role' ) ) {
         $role  = array_shift( $roles );
 
         return isset( $wp_roles->role_names[ $role ] ) ? $role : false;
+    }
+}
+
+if ( ! function_exists( 'wcv_get_select2_script_handle' ) ) {
+    /**
+     * Get the correct Select2 script handle based on WooCommerce version.
+     *
+     * WooCommerce 10.3.0+ deprecated the 'select2' handle in favor of 'wc-select2'.
+     * This function provides backward compatibility with older WooCommerce versions.
+     *
+     * @since 2.6.4
+     * @return string The Select2 script handle to use.
+     */
+    function wcv_get_select2_script_handle() {
+        // Check if WooCommerce is active and get version.
+        if ( defined( 'WC_VERSION' ) && version_compare( WC_VERSION, '10.3.0', '>=' ) ) {
+            return 'wc-select2';
+        }
+
+        return 'select2';
     }
 }
 
@@ -173,10 +200,13 @@ if ( ! function_exists( 'wcv_vendor_drop_down_options' ) ) {
 /**
  * Set the primary role of the specified user to vendor while retaining all other roles after
  *
- * @param $user WP_User
+ * @param WP_User|int $user The ID of the user or the user object.
+ * @param string      $role The role to set, default 'vendor'.
+ * @param bool        $use_custom_msg Whether to use the custom message.
+ * @param string      $custom_message Custom message for the email.
  *
  * @since 2.1.10
- * @version 2.1.10
+ * @version 2.6.6 - Added use custom message and custom message parameters.
  */
 
 if ( ! function_exists( 'wcv_set_primary_vendor_role' ) ) {
@@ -185,27 +215,37 @@ if ( ! function_exists( 'wcv_set_primary_vendor_role' ) ) {
      *
      * @param WP_User|int $user The ID of the user or the user object.
      * @param string      $role The role to set, default 'vendor'.
+     * @param bool        $use_custom_msg Whether to use the custom message.
+     * @param string      $custom_message Custom message for the email.
      * @return void
-     * @version 2.4.7
+     * @version 2.6.6 - Added use custom message and custom message parameters.
      * @since   2.4.7 - Added default role and allow ID or WP_User object.
      */
-    function wcv_set_primary_vendor_role( $user, $role = 'vendor' ) {
+    function wcv_set_primary_vendor_role( $user, $role = 'vendor', $use_custom_msg = false, $custom_message = '' ) {
         if ( is_int( $user ) ) {
             $user = get_user_by( 'id', $user );
         }
-        // Get existing roles.
+
+        // Get existing roles before manipulation.
         $existing_roles = $user->roles;
-        // Remove all existing roles.
-        foreach ( $existing_roles as $existing_role ) {
-            $user->remove_role( $existing_role );
+
+        // Check if the user already has the desired role as primary.
+        if ( ! empty( $existing_roles ) && $existing_roles[0] === $role ) {
+            return; // Role is already primary, no need to change anything.
         }
-        // Add default role/vendor first.
-        $user->add_role( $role );
-        unset( $existing_roles[ $role ] ); // Remove assigned role from existing roles. Avoid adding it to the end if it's already there.
-        // Re-add all other roles.
+
+        // Use set_role to replace all roles with the primary role first.
+        // This method doesn't trigger add_user_role hook multiple times.
+        $user->set_role( $role );
+
+        // Re-add other roles (excluding the primary role we just set).
         foreach ( $existing_roles as $existing_role ) {
-            $user->add_role( $existing_role );
+            if ( $existing_role !== $role ) {
+                $user->add_role( $existing_role );
+            }
         }
+
+        do_action( 'wcvendors_set_primary_vendor_role', $user->ID, $role, $use_custom_msg, $custom_message );
     }
 }
 
@@ -286,51 +326,55 @@ if ( ! function_exists( 'wcv_allowed_html_tags' ) ) {
     function wcv_allowed_html_tags() {
         $html_allowed_tags   = wp_kses_allowed_html( 'post' );
         $wcv_additional_tags = array(
-            'a'      => array(
+            'a'          => array(
                 'href'  => array(),
                 'title' => array(),
-            ),
-            'label'  => array(
-                'for'   => array(),
-                'class' => array(),
-                'id'    => array(),
-            ),
-            'div'    => array(
                 'class' => array(),
                 'id'    => array(),
                 'style' => array(),
             ),
-            'br'     => array(),
-            'strong' => array(),
-            'small'  => array(),
-            'select' => array(
+            'label'      => array(
+                'for'   => array(),
+                'class' => array(),
+                'id'    => array(),
+            ),
+            'div'        => array(
+                'class' => array(),
+                'id'    => array(),
+                'style' => array(),
+            ),
+            'br'         => array(),
+            'strong'     => array(
+                'class' => array(),
+            ),
+            'select'     => array(
                 'class' => array(),
                 'id'    => array(),
                 'name'  => array(),
                 'value' => array(),
                 'style' => array(),
             ),
-            'option' => array(
+            'option'     => array(
                 'value'    => array(),
                 'selected' => array(),
             ),
-            'ul'     => array(
+            'ul'         => array(
                 'class' => array(),
                 'id'    => array(),
                 'style' => array(),
             ),
-            'ol'     => array(
+            'ol'         => array(
                 'class' => array(),
                 'id'    => array(),
                 'style' => array(),
             ),
-            'form'   => array(
+            'form'       => array(
                 'action' => array(),
                 'method' => array(),
                 'class'  => array(),
                 'id'     => array(),
             ),
-            'input'  => array(
+            'input'      => array(
                 'type'        => array(),
                 'name'        => array(),
                 'value'       => array(),
@@ -338,7 +382,56 @@ if ( ! function_exists( 'wcv_allowed_html_tags' ) ) {
                 'id'          => array(),
                 'placeholder' => array(),
             ),
-            'span'   => array(
+            'span'       => array(
+                'class' => array(),
+                'id'    => array(),
+                'style' => array(),
+            ),
+            'small'      => array(
+                'class' => array(),
+                'id'    => array(),
+                'style' => array(),
+            ),
+            'img'        => array(
+                'src'    => array(),
+                'alt'    => array(),
+                'class'  => array(),
+                'id'     => array(),
+                'style'  => array(),
+                'width'  => array(),
+                'height' => array(),
+            ),
+            'svg'        => array(
+                'xmlns'   => array(),
+                'viewBox' => array(),
+                'class'   => array(),
+                'id'      => array(),
+            ),
+            'p'          => array(
+                'class' => array(),
+                'id'    => array(),
+                'style' => array(),
+            ),
+            'use'        => array(
+                'xlink:href' => array(),
+                'class'      => array(),
+            ),
+            'i'          => array(
+                'class' => array(),
+                'id'    => array(),
+                'style' => array(),
+            ),
+            'ins'        => array(
+                'class' => array(),
+                'id'    => array(),
+                'style' => array(),
+            ),
+            'li'         => array(
+                'class' => array(),
+                'id'    => array(),
+                'style' => array(),
+            ),
+            'blockquote' => array(
                 'class' => array(),
                 'id'    => array(),
                 'style' => array(),
@@ -411,78 +504,52 @@ if ( ! function_exists( 'wcvendors_schedule_display_notice' ) ) {
         if ( ! class_exists( 'ActionScheduler' ) ) {
             return;
         }
-
-        $action_key = 'wcvendors_notice_scheduled_action';
-        if ( as_next_scheduled_action( $action_key, array( $notice_key ), 'wcvendors' ) ) {
-            as_unschedule_all_actions( $action_key, array( $notice_key ), 'wcvendors' );
-        }
+        require_once WCV_PLUGIN_DIR . 'classes/admin/class-wcv-admin-notices.php';
+        $action_key   = 'wcvendors_notice_scheduled_action';
+        $is_shown     = get_option( 'wcvendors_display_notice_' . $notice_key, 'no' );
         $is_dismissed = get_option( 'wcvendors_dismissed_notice_' . $notice_key, 'no' );
-        if ( 'yes' === $is_dismissed ) {
+
+        if ( 'yes' === $is_shown || 'yes' === $is_dismissed ) {
             return;
         }
-        $notices = get_option( 'wcvendors_admin_notices', array() );
-        if ( ! in_array( $notice_key, $notices, true ) ) {
-            $notices[] = $notice_key;
-            update_option( 'wcvendors_admin_notices', $notices );
+
+        if ( as_next_scheduled_action( $action_key, array( $notice_key ), 'wcvendors' ) ) {
+            return;
         }
-        as_schedule_single_action( time() + ( DAY_IN_SECONDS * $days ), $action_key, array( $notice_key ), 'wcvendors' );
+
+        $notices = (array) get_option( 'wcvendors_admin_notices', array() );
+        $notices = array_filter( $notices );
+
+        if ( ! in_array( $notice_key, $notices, true ) ) {
+            WCVendors_Admin_Notices::add_notice( $notice_key );
+        }
+
+        as_schedule_single_action( time() + ( DAY_IN_SECONDS * $days ), $action_key, array( $notice_key ), 'wcvendors', true );
+
         $is_display = 0 === $days ? 'yes' : 'no';
-        add_option( 'wcvendors_display_notice_' . $notice_key, $is_display );
+        update_option( 'wcvendors_display_notice_' . $notice_key, $is_display );
     }
 }
 
-if ( ! function_exists( 'wcv_switch_to_classic_cart_checkout' ) ) {
-
+if ( ! function_exists( 'wcv_trigger_admin_notice' ) ) {
     /**
-     * Switch to classic cart/checkout
+     * Trigger admin notice
      *
-     * @since 2.4.8
-     * @version 2.4.8
-     * @return void
+     * @param string $notice_key The notice key.
+     *
+     * @since 2.5.2
      */
-    function wcv_switch_to_classic_cart_checkout() {
-        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+    function wcv_trigger_admin_notice( $notice_key ) {
+        $notices = (array) get_option( 'wcvendors_admin_notices', array() );
+        $notices = array_filter( $notices );
+
+        $notice = in_array( $notice_key, $notices, true ) || in_array( $notice_key, array_keys( $notices ), true ) ? $notice_key : false;
+
+        if ( ! $notice ) {
             return;
         }
 
-        if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'switch_cc_blocks' ) ) {
-            return;
-        }
-
-        $cart_page     = get_post( wc_get_page_id( 'cart' ) );
-        $checkout_page = get_post( wc_get_page_id( 'checkout' ) );
-
-        if ( ! $cart_page || ! $checkout_page ) {
-            return;
-        }
-
-        if ( ! has_block( 'woocommerce/cart', $cart_page ) && ! has_block( 'woocommerce/checkout', $checkout_page ) ) {
-            wp_die();
-        }
-
-        if ( has_block( 'woocommerce/cart', $cart_page ) ) {
-            wp_update_post(
-                array(
-                    'ID'           => $cart_page->ID,
-                    'post_content' => '<!-- wp:woocommerce/classic-shortcode /-->',
-                )
-            );
-        }
-
-        if ( has_block( 'woocommerce/checkout', $checkout_page ) ) {
-            wp_update_post(
-                array(
-                    'ID'           => $checkout_page->ID,
-                    'post_content' => '<!-- wp:woocommerce/classic-shortcode {"shortcode":"checkout"} /-->	',
-                )
-            );
-        }
-        wp_send_json_success(
-            array(
-                'message' => __( 'Successfully switched to Classic Cart/Checkout.', 'wc-vendors' ),
-            )
-        );
-        wp_die();
+        update_option( 'wcvendors_display_notice_' . $notice_key, 'yes' );
     }
 }
 
@@ -608,5 +675,81 @@ if ( ! function_exists( 'escape_array_for_in_operator' ) ) {
             $formatted_values = '(' . $formatted_values . ')';
         }
         return $formatted_values;
+    }
+}
+
+if ( ! function_exists( 'wcv_deprecated_action' ) ) {
+    /**
+     * Trigger a deprecated action.
+     *
+     * @param string $old_hook Function that was called.
+     * @param string $version  Version that function was deprecated in.
+     * @param string $replacement Optional. Function that should have been called.
+     * @param mixed  ...$args  Additional arguments to pass to the hooks.
+     *
+     * @since 2.5.1
+     * @version 2.5.1
+     */
+    function wcv_deprecated_action( $old_hook, $version, $replacement, ...$args ) {
+        if ( wp_doing_ajax() ) {
+            return;
+        }
+        do_action_deprecated( $old_hook, $args, $version, $replacement );
+        do_action( $replacement, ...$args );
+    }
+}
+
+
+if ( ! function_exists( 'wcv_deprecated_filter' ) ) {
+    /**
+     * Trigger a deprecated filter.
+     *
+     * @param string $old_hook Function that was called.
+     * @param string $version  Version that function was deprecated in.
+     * @param string $replacement Optional. Function that should have been called.
+     * @param mixed  $value    Value to return.
+     * @param mixed  ...$args  Additional arguments to pass to the hooks.
+     *
+     * @since 2.5.1
+     * @version 2.5.1
+     */
+    function wcv_deprecated_filter( $old_hook, $version, $replacement, $value, ...$args ) {
+        if ( wp_doing_ajax() ) {
+            return $value;
+        }
+        $value = apply_filters_deprecated( $old_hook, array( $value, ...$args ), $version, $replacement );
+        return apply_filters( $replacement, $value, ...$args );
+    }
+}
+
+if ( ! function_exists( 'maybe_load_new_dashboard' ) ) {
+    /**
+     * Check if Pro version is larger than 1.9.1
+     */
+    function maybe_load_new_dashboard() {
+        $maybe_load_new_dashboard = true;
+        $wcv_path                 = WP_PLUGIN_DIR . '/wc-vendors-pro';
+        $legacy_path              = $wcv_path . '/legacy/class-wcvendors-pro.php';
+        $active_plugins           = get_option( 'active_plugins' );
+        $is_pro_active            = in_array( 'wc-vendors-pro/wcvendors-pro.php', $active_plugins, true );
+
+        if ( $is_pro_active && ! file_exists( $legacy_path ) ) {
+            $maybe_load_new_dashboard = false;
+        }
+        return $maybe_load_new_dashboard;
+    }
+}
+
+
+if ( ! function_exists( 'wcv_is_all_product_types_hidden' ) ) {
+    /**
+     * Check if all product types are hidden.
+     *
+     * @return bool
+     */
+    function wcv_is_all_product_types_hidden() {
+        $hidden_product_types = get_option( 'wcvendors_capability_product_types', array() );
+        $wc_product_types     = array_keys( wc_get_product_types() );
+        return empty( array_diff( $wc_product_types, $hidden_product_types ) );
     }
 }

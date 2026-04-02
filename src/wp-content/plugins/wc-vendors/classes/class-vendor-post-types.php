@@ -52,6 +52,8 @@ class WCV_Post_Types {
                     'exclude_from_order_views'         => true,
                     'exclude_from_order_reports'       => true,
                     'exclude_from_order_sales_reports' => true,
+                    'exclude_from_order_webhooks'      => true,
+                    'show_in_rest'                     => false,
                     'class_name'                       => 'WC_Order_Vendor',
                 )
             )

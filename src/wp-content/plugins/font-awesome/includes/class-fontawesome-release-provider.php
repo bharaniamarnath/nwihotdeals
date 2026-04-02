@@ -6,7 +6,11 @@
  */
 namespace FortAwesome;
 
-use \WP_Error, \Error, \Exception;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit; // Exit if accessed directly.
+}
+
+use WP_Error, Error, Exception;
 
 /**
  * Provides metadata about Font Awesome releases.
@@ -92,6 +96,12 @@ class FontAwesome_Release_Provider {
 	/**
 	 * @ignore
 	 */
+	protected $latest_version_7 = null;
+
+	// phpcs:ignore Generic.Commenting.DocComment.MissingShort
+	/**
+	 * @ignore
+	 */
 	protected $api_client = null;
 
 	// phpcs:ignore Generic.Commenting.DocComment.MissingShort
@@ -156,6 +166,10 @@ class FontAwesome_Release_Provider {
 			$this->latest_version_6 = isset( $option_value['data']['latest_version_6'] )
 				? $option_value['data']['latest_version_6']
 				: null;
+
+			$this->latest_version_7 = isset( $option_value['data']['latest_version_7'] )
+				? $option_value['data']['latest_version_7']
+				: null;
 		} else {
 			throw new ReleaseMetadataMissingException();
 		}
@@ -180,6 +194,9 @@ query {
 		version
 	}
 	latest_version_6: release(version: "6.x") {
+		version
+	}
+	latest_version_7: release(version: "7.x") {
 		version
 	}
 	releases {
@@ -220,13 +237,21 @@ EOD;
 		$refreshed_at     = time();
 		$latest_version_5 = isset( $body['data']['latest_version_5']['version'] ) ? $body['data']['latest_version_5']['version'] : null;
 		$latest_version_6 = isset( $body['data']['latest_version_6']['version'] ) ? $body['data']['latest_version_6']['version'] : null;
+		$latest_version_7 = isset( $body['data']['latest_version_7']['version'] ) ? $body['data']['latest_version_7']['version'] : null;
 
 		if ( is_null( $latest_version_5 ) ) {
-			throw ApiResponseException::with_wp_error( new WP_Error( 'missing_latest_version_5' ) );
+			$e = ApiResponseException::with_wp_error( new WP_Error( 'missing_latest_version_5' ) );
+			throw $e;
 		}
 
 		if ( is_null( $latest_version_6 ) ) {
-			throw ApiResponseException::with_wp_error( new WP_Error( 'missing_latest_version_6' ) );
+			$e = ApiResponseException::with_wp_error( new WP_Error( 'missing_latest_version_6' ) );
+			throw $e;
+		}
+
+		if ( is_null( $latest_version_7 ) ) {
+			$e = ApiResponseException::with_wp_error( new WP_Error( 'missing_latest_version_7' ) );
+			throw $e;
 		}
 
 		$option_value = array(
@@ -234,6 +259,7 @@ EOD;
 			'data'         => array(
 				'latest_version_5' => $latest_version_5,
 				'latest_version_6' => $latest_version_6,
+				'latest_version_7' => $latest_version_7,
 				'releases'         => $releases,
 			),
 		);
@@ -249,21 +275,32 @@ EOD;
 	 * @return FontAwesome_Resource
 	 */
 	private function build_resource( $version, $file_basename, $flags = array(
-		'use_svg' => false,
-		'use_pro' => false,
+		'use_svg'          => false,
+		'use_pro'          => false,
+		'cdn_url_template' => null,
 	) ) {
-		$full_url  = 'https://';
-		$full_url .= boolval( $flags['use_pro'] ) ? 'pro.' : 'use.';
-		$full_url .= 'fontawesome.com/releases/v' . $version . '/';
+		$version = ( isset( $args['version'] ) && ! empty( $args['version'] ) ) ? $args['version'] : $version;
+		$use_svg = isset( $flags['use_svg'] ) && $flags['use_svg'];
+		$use_pro = isset( $flags['use_pro'] ) && $flags['use_pro'];
 
 		// use the style to build the relative url lookup the relative url.
-		$relative_url  = $flags['use_svg'] ? 'js/' : 'css/';
+		$relative_url  = $use_svg ? 'js/' : 'css/';
 		$relative_url .= $file_basename . '.';
-		$relative_url .= $flags['use_svg'] ? 'js' : 'css';
+		$relative_url .= $use_svg ? 'js' : 'css';
 
-		$full_url .= $relative_url;
+		$full_url = '';
 
-		$license = $flags['use_pro'] ? 'pro' : 'free';
+		if ( isset( $flags['cdn_url_template'] ) && is_string( $flags['cdn_url_template'] ) ) {
+			$base_url = preg_replace( '/\{\{\s*version\s*\}\}/', $version, $flags['cdn_url_template'] );
+			$full_url = preg_replace( '/\{\{\s*relative_url\s*\}\}/', $relative_url, $base_url );
+		} else {
+			$base_url  = 'https://';
+			$base_url .= $use_pro ? 'pro.' : 'use.';
+			$base_url .= 'fontawesome.com/releases/v' . $version . '/';
+			$full_url  = $base_url . $relative_url;
+		}
+
+		$license = $use_pro ? 'pro' : 'free';
 
 		// if we can't resolve an integrity_key in this deeply nested lookup, it will remain null.
 		$integrity_key = null;
@@ -327,7 +364,7 @@ EOD;
 		$versions = array_keys( $this->releases() );
 		usort(
 			$versions,
-			function( $first, $second ) {
+			function ( $first, $second ) {
 				return version_compare( $second, $first );
 			}
 		);
@@ -352,7 +389,7 @@ EOD;
 	 * @throws ApiResponseException
 	 * @throws ReleaseProviderStorageException
 	 * @throws ConfigCorruptionException when called with an invalid configuration
-	 * @return array
+	 * @return FontAwesome_ResourceCollection
 	 */
 	public static function get_resource_collection( $version, $flags = array(
 		'use_pro'           => false,
@@ -450,6 +487,10 @@ EOD;
 		return $this->latest_version_5;
 	}
 
+	public function latest_version_7() {
+		return $this->latest_version_7;
+	}
+
 	/**
 	 * Returns a version number corresponding to the most recent minor release
 	 * in the 6.x line.
@@ -508,6 +549,31 @@ EOD;
 	 *
 	 * @internal
 	 * @ignore
+	 * @return FontAwesome_Resource
+	 */
+	public function get_svg_styles_resource( $version ) {
+		$file_basename = 'svg-with-js';
+
+		$cdn_url_template = null;
+
+		if ( 'development' === getenv( 'FONTAWESOME_ENV' ) && is_string( getenv( 'FONTAWESOME_CDN_URL_TEMPLATE' ) ) ) {
+			$cdn_url_template = getenv( 'FONTAWESOME_CDN_URL_TEMPLATE' );
+		}
+
+		return $this->build_resource(
+			$version,
+			$file_basename,
+			array(
+				'cdn_url_template' => $cdn_url_template,
+			)
+		);
+	}
+
+	/**
+	 * Internal use only, not part of this plugin's public API.
+	 *
+	 * @internal
+	 * @ignore
 	 */
 	public static function delete_option() {
 		if ( is_multisite() ) {
@@ -548,6 +614,8 @@ EOD;
 		return delete_transient( self::LAST_USED_RELEASE_TRANSIENT );
 	}
 }
+
+// phpcs:disable Universal.Files.SeparateFunctionsFromOO.Mixed
 
 /**
  * Convenience global function to get a singleton instance of the Release Provider.

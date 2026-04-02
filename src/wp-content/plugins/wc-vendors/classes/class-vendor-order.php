@@ -368,29 +368,27 @@ class WC_Order_Vendor extends WC_Order {
     }
 
     /**
+     * Status transition
+     */
+    public function status_transition() {
+        return false;
+    }
+
+    /**
+     * Set recorded sales
+     *
+     * @param bool $value True or false.
+     */
+    public function set_recorded_sales( $value ) {
+        $this->set_prop( 'recorded_sales', false );
+    }
+
+
+    /**
      * Save the order data to the database.
      */
     public function save() {
-        remove_action( 'woocommerce_order_status_completed', 'wc_update_total_sales_counts' );
-        remove_action( 'woocommerce_order_status_processing', 'wc_update_total_sales_counts' );
-        remove_action( 'woocommerce_order_status_on-hold', 'wc_update_total_sales_counts' );
-        remove_action( 'woocommerce_order_status_completed_to_cancelled', 'wc_update_total_sales_counts' );
-        remove_action( 'woocommerce_order_status_processing_to_cancelled', 'wc_update_total_sales_counts' );
-        remove_action( 'woocommerce_order_status_on-hold_to_cancelled', 'wc_update_total_sales_counts' );
-        remove_action( 'woocommerce_trash_order', 'wc_update_total_sales_counts' );
-        remove_action( 'woocommerce_untrash_order', 'wc_update_total_sales_counts' );
-        remove_action( 'woocommerce_before_delete_order', 'wc_update_total_sales_counts' );
-
         parent::save();
-
-        add_action( 'woocommerce_order_status_completed', 'wc_update_total_sales_counts' );
-        add_action( 'woocommerce_order_status_processing', 'wc_update_total_sales_counts' );
-        add_action( 'woocommerce_order_status_on-hold', 'wc_update_total_sales_counts' );
-        add_action( 'woocommerce_order_status_completed_to_cancelled', 'wc_update_total_sales_counts' );
-        add_action( 'woocommerce_order_status_processing_to_cancelled', 'wc_update_total_sales_counts' );
-        add_action( 'woocommerce_order_status_on-hold_to_cancelled', 'wc_update_total_sales_counts' );
-        add_action( 'woocommerce_trash_order', 'wc_update_total_sales_counts' );
-        add_action( 'woocommerce_untrash_order', 'wc_update_total_sales_counts' );
-        add_action( 'woocommerce_before_delete_order', 'wc_update_total_sales_counts' );
+        return $this->get_id();
     }
 }

@@ -43,14 +43,17 @@ class WCVendors_Admin_Settings extends WC_Admin_Settings {
             $settings = array();
 
             // Include the setings page.
-            include_once WCV_ABSPATH_ADMIN . 'settings/class-wcv-settings-page.php';
+            include_once WCV_ABSPATH_ADMIN . '/settings/class-wcv-settings-page.php';
 
             $settings[] = include WCV_ABSPATH_ADMIN . 'settings/class-wcv-settings-general.php';
             $settings[] = include WCV_ABSPATH_ADMIN . 'settings/class-wcv-settings-commission.php';
             $settings[] = include WCV_ABSPATH_ADMIN . 'settings/class-wcv-settings-capabilities.php';
             $settings[] = include WCV_ABSPATH_ADMIN . 'settings/class-wcv-settings-display.php';
-            $settings[] = include WCV_ABSPATH_ADMIN . 'settings/class-wcv-settings-payments.php';
+            $settings[] = include WCV_ABSPATH_ADMIN . 'settings/class-wcv-settings-notifications.php';
             $settings[] = include WCV_ABSPATH_ADMIN . 'settings/class-wcv-settings-advanced.php';
+            if ( ! is_wcv_pro_active() ) {
+                $settings[] = include WCV_ABSPATH_ADMIN . 'settings/class-wcv-settings-form.php';
+            }
 
             self::$settings = apply_filters( 'wcvendors_get_settings_pages', $settings );
         }
@@ -64,7 +67,7 @@ class WCVendors_Admin_Settings extends WC_Admin_Settings {
     public static function save() {
         global $current_tab;
 
-        if ( empty( $_REQUEST['_wpnonce'] ) || ! wp_verify_nonce( $_REQUEST['_wpnonce'], 'wcvendors-settings' ) ) {
+        if ( empty( $_REQUEST['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_REQUEST['_wpnonce'] ) ), 'wcvendors-settings' ) ) {
             die( esc_attr__( 'Action failed. Please refresh the page and retry.', 'wc-vendors' ) );
         }
 
@@ -125,6 +128,7 @@ class WCVendors_Admin_Settings extends WC_Admin_Settings {
         include WCV_ABSPATH_ADMIN . 'includes/class-wcv-walker-pagedropdown-multiple.php';
 
         foreach ( $options as $value ) {
+            do_action( 'wcvendors_settings_output_field_start', $value );
             if ( ! isset( $value['type'] ) ) {
                 continue;
             }
@@ -155,9 +159,17 @@ class WCVendors_Admin_Settings extends WC_Admin_Settings {
             if ( ! isset( $value['suffix'] ) ) {
                 $value['suffix'] = '';
             }
+            if ( ! isset( $value['should_hide'] ) ) {
+                $value['should_hide'] = false;
+            }
 
             // Custom attribute handling.
             $custom_attributes = isset( $value['custom_attributes'] ) && is_array( $value['custom_attributes'] ) ? $value['custom_attributes'] : array();
+
+            // Check if field should be hidden.
+            if ( isset( $value['should_hide'] ) && $value['should_hide'] ) {
+                continue;
+            }
 
             // Description handling.
             $field_description = self::get_field_description( $value );
@@ -216,7 +228,13 @@ class WCVendors_Admin_Settings extends WC_Admin_Settings {
                                 class="<?php echo esc_attr( $value['class'] ); ?>"
                                 placeholder="<?php echo esc_attr( $value['placeholder'] ); ?>"
                                 <?php self::build_custom_attribute( $custom_attributes ); ?>
-                                /><?php echo esc_html( $value['suffix'] ); ?> <?php echo wp_kses_post( $description ); ?>
+                                />
+                                <?php
+                                if ( ! empty( $value['suffix'] ) ) :
+                                ?>
+                                <span style="margin-left: 5px;"><?php echo esc_html( $value['suffix'] ); ?></span>
+                                <?php endif; ?>
+                                <?php echo wp_kses_post( $description ); ?>
                             <?php do_action( 'wcvendors_after_standard_text_input_field', $value ); ?>
                         </td>
                     </tr>
@@ -594,10 +612,10 @@ class WCVendors_Admin_Settings extends WC_Admin_Settings {
                             <?php echo wp_kses_post( ( $description ) ? $description : '' ); ?>
                             <br />
                             <a class="select_all button" href="#">
-                                <?php esc_html_e( 'Select all', 'wc-vendors' ); ?>
+                                <?php esc_html_e( 'Select All', 'wc-vendors' ); ?>
                             </a>
                             <a class="select_none button" href="#">
-                                <?php esc_html_e( 'Select none', 'wc-vendors' ); ?>
+                                <?php esc_html_e( 'Select None', 'wc-vendors' ); ?>
                             </a>
                             <?php do_action( 'wcvendors_after_multi_country_select', $value ); ?>
                         </td>
@@ -685,8 +703,15 @@ class WCVendors_Admin_Settings extends WC_Admin_Settings {
                     break;
 
                 case 'wysiwyg':
-                    $option_value = self::get_option( $value['id'], $value['default'] );
-
+                    $option_value   = self::get_option( $value['id'], $value['default'] );
+                    $editor_setting = isset( $value['editor'] ) ? $value['editor'] : array();
+                    $editor_setting = wp_parse_args(
+                        $editor_setting,
+                        array(
+                            'textarea_name' => $value['id'],
+                            'textarea_rows' => 10,
+                        )
+                    );
                     ?>
                         <tr valign="top">
                             <th scope="row" class="titledesc">
@@ -695,7 +720,13 @@ class WCVendors_Admin_Settings extends WC_Admin_Settings {
                             <?php echo wp_kses_post( $tooltip_html ); ?>
                             </th>
                             <td class="forminp">
-                            <?php wp_editor( $option_value, $value['id'], array( 'textarea_name' => $value['id'] ) ); ?>
+                            <?php
+                                wp_editor(
+                                    $option_value,
+                                    $value['id'],
+                                    $editor_setting
+                                );
+                            ?>
                             <?php do_action( 'wcvendors_after_wysiwyg', $value ); ?>
                             <?php echo wp_kses_post( $description ); ?>
                             </td>
@@ -709,6 +740,7 @@ class WCVendors_Admin_Settings extends WC_Admin_Settings {
                     do_action( 'wcvendors_admin_field_' . $value['type'], $value );
                     break;
             }
+            do_action( 'wcvendors_settings_output_field_end', $value );
         }
     }
 
@@ -902,9 +934,9 @@ class WCVendors_Admin_Settings extends WC_Admin_Settings {
         $htmlAttributes = '';
 
         foreach ( $custom_attributes as $key => $value ) {
-            $htmlAttributes .= sprintf( '%s=%s ', htmlspecialchars( $key, ENT_QUOTES ), htmlspecialchars( $value, ENT_QUOTES ) );
+            $htmlAttributes .= sprintf( '%s="%s" ', htmlspecialchars( $key, ENT_QUOTES ), htmlspecialchars( $value, ENT_QUOTES ) );
         }
 
-        echo esc_attr( trim( $htmlAttributes ) );
+        echo trim( $htmlAttributes ); //phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 }

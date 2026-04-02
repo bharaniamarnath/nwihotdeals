@@ -178,8 +178,8 @@ class WCVendors_Commissions_Page extends WP_List_Table {
             : admin_url( 'post.php?post=' . absint( $item->order_id ) ) . '&action=edit';
 
         $action_nonce = wp_create_nonce( 'delete_commission_nonce' );
-        $page         = isset( $_GET['page'] ) ? htmlspecialchars( $_GET['page'] ) : ''; //phpcs:ignore WordPress.Security.NonceVerification.Recommended
-        $paged        = isset( $_GET['paged'] ) ? htmlspecialchars( $_GET['paged'] ) : 1; //phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        $page         = isset( $_GET['page'] ) ? sanitize_text_field( wp_unslash( $_GET['page'] ) ) : ''; //phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        $paged        = isset( $_GET['paged'] ) ? sanitize_text_field( wp_unslash( $_GET['paged'] ) ) : 1; //phpcs:ignore WordPress.Security.NonceVerification.Recommended
         $actions      = array(
             'delete' => sprintf(
                 '<a class="delete_commission" href="?page=%s&action=%s&id[]=%s&_wpnonce=%s&paged=%s">Delete</a>',
@@ -314,8 +314,7 @@ class WCVendors_Commissions_Page extends WP_List_Table {
         }
 
         if ( 'top' === $which ) {
-            echo '<div class="alignleft actions" style="width: 80%;">';
-
+            echo '<div class="alignleft actions" id="wcv-commission-filters" style="width: 80%;">';
             // Date range fields.
             $this->date_range_fields( 'commission' );
 
@@ -335,12 +334,13 @@ class WCVendors_Commissions_Page extends WP_List_Table {
                     'name' => 'do-filter',
                 )
             );
+
             submit_button( __( 'Clear', 'wc-vendors' ), 'secondary', 'reset', false, array( 'type' => 'reset' ) );
 
-            echo '<a class="button wcv-action export_commissions" style="width: 110px; float: left;" href="' . esc_url_raw( wp_nonce_url( admin_url( 'admin.php?page=wcv-commissions&action=export_commissions' . $args_url ), 'export_commissions', 'nonce' ) ) . '">' . esc_html__( 'Export to CSV', 'wc-vendors' ) . '</a>';
-            echo '<a class="button wcv-action export_commission_totals" style="width: 150px; float: left;" href="' . esc_url_raw( wp_nonce_url( admin_url( 'admin.php?page=wcv-commissions&action=export_commission_totals' . $args_url ), 'export_commission_totals', 'nonce' ) ) . '">' . esc_html__( 'Export Totals to CSV', 'wc-vendors' ) . '</a>';
-            echo '<a class="button wcv-action export_paypal_masspay" style="width: 150px; float: left;" href="' . esc_url_raw( wp_nonce_url( admin_url( 'admin.php?page=wcv-commissions&action=export_paypal_masspay' . $args_url ), 'export_paypal_masspay', 'nonce' ) ) . '">' . esc_html__( 'PayPal Masspay CSV', 'wc-vendors' ) . '</a>';
-            echo '<a class="button wcv-action mark_all_commissions_paid" id="mark_all_paid" style="width: 100px; float: left;" href="' . esc_url_raw( wp_nonce_url( admin_url( 'admin.php?page=wcv-commissions&action=mark_all_paid' . $args_url ), 'mark_all_paid', 'nonce' ) ) . '">' . esc_html__( 'Mark all paid', 'wc-vendors' ) . '</a>';
+            echo '<a class="button wcv-action export_commissions" href="' . esc_url_raw( wp_nonce_url( admin_url( 'admin.php?page=wcv-commissions&action=export_commissions' . $args_url ), 'export_commissions', 'nonce' ) ) . '">' . esc_html__( 'Export to CSV', 'wc-vendors' ) . '</a>';
+            echo '<a class="button wcv-action export_commission_totals" href="' . esc_url_raw( wp_nonce_url( admin_url( 'admin.php?page=wcv-commissions&action=export_commission_totals' . $args_url ), 'export_commission_totals', 'nonce' ) ) . '">' . esc_html__( 'Export Totals to CSV', 'wc-vendors' ) . '</a>';
+            echo '<a class="button wcv-action export_paypal_masspay" href="' . esc_url_raw( wp_nonce_url( admin_url( 'admin.php?page=wcv-commissions&action=export_paypal_masspay' . $args_url ), 'export_paypal_masspay', 'nonce' ) ) . '">' . esc_html__( 'PayPal Masspay CSV', 'wc-vendors' ) . '</a>';
+            echo '<a class="button wcv-action mark_all_commissions_paid" id="mark_all_paid" href="' . esc_url_raw( wp_nonce_url( admin_url( 'admin.php?page=wcv-commissions&action=mark_all_paid' . $args_url ), 'mark_all_paid', 'nonce' ) ) . '">' . esc_html__( 'Mark all paid', 'wc-vendors' ) . '</a>';
             echo '</div>';
         }
     }
@@ -367,7 +367,7 @@ class WCVendors_Commissions_Page extends WP_List_Table {
         ?>
 
         <label for="from_date">
-            <?php esc_html_e( 'From:', 'wc-vendors' ); ?>
+            <span><?php esc_html_e( 'From:', 'wc-vendors' ); ?></span>
             <input
                 type="text"
                 size="9"
@@ -382,7 +382,7 @@ class WCVendors_Commissions_Page extends WP_List_Table {
         </label>
 
         <label for="from_date">
-            <?php esc_html_e( 'To:', 'wc-vendors' ); ?>
+            <span><?php esc_html_e( 'To:', 'wc-vendors' ); ?></span>
             <input
                 type="text"
                 size="9"
@@ -410,7 +410,7 @@ class WCVendors_Commissions_Page extends WP_List_Table {
 
         $com_status = isset( $_GET['com_status'] ) ? sanitize_text_field( wp_unslash( $_GET['com_status'] ) ) : '';
         ?>
-        <select id="com_status_dropdown" name="com_status" class="wc-enhanced-select">
+        <select id="com_status_dropdown" name="com_status">
             <option <?php selected( $com_status, '' ); ?> value=''><?php esc_attr_e( 'Show all Statuses', 'wc-vendors' ); ?></option>
             <option <?php selected( $com_status, 'due' ); ?> value="due"><?php esc_attr_e( 'Due', 'wc-vendors' ); ?></option>
             <option <?php selected( $com_status, 'paid' ); ?> value="paid"><?php esc_attr_e( 'Paid', 'wc-vendors' ); ?></option>
@@ -521,7 +521,7 @@ class WCVendors_Commissions_Page extends WP_List_Table {
         $sql  = $wpdb->prepare( "UPDATE `{$wpdb->prefix}pv_commission` SET `status` = %s WHERE `status` = %s AND id IN", 'paid', 'due' );
         $sql .= " $ids";
 
-        $result = $wpdb->query( $sql ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        $result = $wpdb->query( $sql ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,PluginCheck.Security.DirectDB.UnescapedDBParameter
 
         return $result;
     }
@@ -547,7 +547,7 @@ class WCVendors_Commissions_Page extends WP_List_Table {
         $sql  = $wpdb->prepare( "UPDATE `{$wpdb->prefix}pv_commission` SET `status` = %s WHERE id IN", 'reversed' );
         $sql .= " $ids";
 
-        $result = $wpdb->query( $sql ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        $result = $wpdb->query( $sql ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,PluginCheck.Security.DirectDB.UnescapedDBParameter
 
         return $result;
     }
@@ -573,7 +573,7 @@ class WCVendors_Commissions_Page extends WP_List_Table {
         $sql  = $wpdb->prepare( "UPDATE `{$wpdb->prefix}pv_commission` SET `status` = %s WHERE id IN", 'due' );
         $sql .= " $ids";
 
-        $result = $wpdb->query( $sql ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        $result = $wpdb->query( $sql ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,PluginCheck.Security.DirectDB.UnescapedDBParameter
 
         return $result;
     }
@@ -595,7 +595,7 @@ class WCVendors_Commissions_Page extends WP_List_Table {
         $ids    = explode( ',', $ids );
         $ids    = escape_array_for_in_operator( $ids, true );
         $sql    = "DELETE FROM `{$wpdb->prefix}pv_commission` WHERE id IN $ids";
-        $result = $wpdb->query( $sql ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        $result = $wpdb->query( $sql ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,PluginCheck.Security.DirectDB.UnescapedDBParameter
 
         return $result;
     }
@@ -673,7 +673,7 @@ class WCVendors_Commissions_Page extends WP_List_Table {
             $sql       .= $vendor_sql;
         }
 
-        $max = (int) $wpdb->get_var( $sql ); //phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared 
+        $max = (int) $wpdb->get_var( $sql ); //phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,PluginCheck.Security.DirectDB.UnescapedDBParameter
 
         $sql = "SELECT *, ( total_due + total_shipping + tax ) as totals FROM {$wpdb->prefix}pv_commission";
 
@@ -713,7 +713,7 @@ class WCVendors_Commissions_Page extends WP_List_Table {
         $sql      = apply_filters_deprecated( 'wcv_get_commissions_sql', array( $sql, $sql_args ), '2.2.2', 'wcvendors_get_commissions_sql' );
         $sql      = apply_filters( 'wcvendors_get_commissions_sql', $sql, $sql_args );
 
-        $this->items = $wpdb->get_results( $sql ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        $this->items = $wpdb->get_results( $sql ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,PluginCheck.Security.DirectDB.UnescapedDBParameter
         $product_ids = array();
 
         foreach ( $this->items as $item ) {

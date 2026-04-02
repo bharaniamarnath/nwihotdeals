@@ -1,32 +1,17 @@
 <?php
 namespace EverCompare\Frontend;
+use WooLentor\Traits\Singleton;
 /**
  * Button handlers class
  */
 class Manage_Compare {
-
-    /**
-     * [$_instance]
-     * @var null
-     */
-    private static $_instance = null;
+    use Singleton;
 
     /**
      * [$reached_max_limit]
      * @var boolean
      */
     public $reached_max_limit = false;
-
-    /**
-     * [instance] Initializes a singleton instance
-     * @return [Compare_Button]
-     */
-    public static function instance() {
-        if ( is_null( self::$_instance ) ) {
-            self::$_instance = new self();
-        }
-        return self::$_instance;
-    }
     
     /**
      * Initialize the class
@@ -157,7 +142,7 @@ class Manage_Compare {
      * @return [void]
      */
     public function pop_up_html(){
-        echo '<div class="htcompare-popup"><div class="htcompare-popup-content-area"><span class="htcompare-popup-close">&nbsp;</span>'.do_shortcode( '[evercompare_table]' ).'</div></div>';
+        echo '<div class="htcompare-popup" style="display:none;"><div class="htcompare-popup-content-area"><span class="htcompare-popup-close">&nbsp;</span>'.do_shortcode( '[evercompare_table]' ).'</div></div>';
     }
 
     /**
@@ -664,7 +649,7 @@ class Manage_Compare {
         if( 'pa_' === $str ){
             $field_name = wc_attribute_label( $field );
         }else{
-            $field_name = $default[$field];
+            $field_name = !empty( $default[$field] ) ? $default[$field] : '';
         }
         return $field_name;
 

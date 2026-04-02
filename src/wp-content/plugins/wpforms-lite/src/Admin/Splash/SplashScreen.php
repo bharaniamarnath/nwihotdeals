@@ -49,10 +49,8 @@ class SplashScreen {
 		add_action( 'admin_init', [ $this, 'initialize_splash_data' ], 15 );
 		add_action( 'admin_enqueue_scripts', [ $this, 'admin_enqueue_scripts' ] );
 		add_action( 'admin_footer', [ $this, 'admin_footer' ] );
-		add_filter( 'wpforms_pro_admin_dashboard_widget_welcome_block_html_message', [ $this, 'add_splash_link' ] );
-		add_filter( 'wpforms_lite_admin_dashboard_widget_welcome_block_html_message', [ $this, 'add_splash_link' ] );
-		add_filter( 'update_footer', [ $this, 'add_splash_link' ], PHP_INT_MAX );
 		add_filter( 'removable_query_args', [ $this, 'removable_query_args' ] );
+		add_action( 'update_option_wpforms_license', [ $this, 'reset_splash_data' ] );
 	}
 
 	/**
@@ -67,7 +65,7 @@ class SplashScreen {
 		}
 
 		if ( empty( $this->splash_data ) ) {
-			$cached_data_obj = wpforms()->get( 'splash_cache' );
+			$cached_data_obj = wpforms()->obj( 'splash_cache' );
 			$cached_data     = $cached_data_obj ? $cached_data_obj->get() : null;
 
 			if ( empty( $cached_data ) ) {
@@ -77,10 +75,6 @@ class SplashScreen {
 			$default_data = $this->get_default_data();
 
 			$this->splash_data = wp_parse_args( $cached_data, $default_data );
-
-			$version = $this->get_major_version( WPFORMS_VERSION );
-
-			$this->update_splash_data_version( $version );
 		}
 	}
 
@@ -112,7 +106,7 @@ class SplashScreen {
 		wp_register_script(
 			'wpforms-splash-modal',
 			WPFORMS_PLUGIN_URL . "assets/js/admin/splash/modal{$min}.js",
-			[ 'jquery' ],
+			[ 'jquery', 'wp-util' ],
 			WPFORMS_VERSION,
 			true
 		);
@@ -139,7 +133,7 @@ class SplashScreen {
 	 *
 	 * @since 1.8.7
 	 */
-	public function admin_footer() {
+	public function admin_footer(): void {
 
 		if ( $this->is_splash_empty() || ! $this->is_allow_splash() ) {
 			return;
@@ -162,31 +156,7 @@ class SplashScreen {
 			return true;
 		}
 
-		return empty( $this->retrieve_blocks_for_user( $this->splash_data['blocks'] ?? [] ) );
-	}
-
-	/**
-	 * Retrieve blocks for user.
-	 *
-	 * @since 1.8.7
-	 *
-	 * @param array $blocks Splash modal blocks.
-	 */
-	private function retrieve_blocks_for_user( array $blocks ): array {
-
-		$user_license = $this->get_user_license();
-
-		if ( ! $user_license ) {
-			$user_license = 'lite';
-		}
-
-		return array_filter(
-			$blocks,
-			static function ( $block ) use ( $user_license ) { //phpcs:ignore WPForms.PHP.UseStatement.UnusedUseStatement
-
-				return in_array( $user_license, $block['type'] ?? [], true );
-			}
-		);
+		return empty( $this->splash_data['blocks'] );
 	}
 
 	/**
@@ -208,10 +178,10 @@ class SplashScreen {
 			$this->update_splash_version();
 		}
 
-		if ( empty( $data ) ) {
-			$data = $this->splash_data ?? [];
+		$data = ! empty( $data ) ? $data : $this->splash_data;
 
-			$data['blocks'] = $this->retrieve_blocks_for_user( $data['blocks'] ?? [] );
+		if ( ! $this->is_plugin_version_up_to_date() ) {
+			$data['display_notice'] = true;
 		}
 
 		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
@@ -219,36 +189,38 @@ class SplashScreen {
 	}
 
 	/**
+	 * Check if the plugin version is up to date.
+	 *
+	 * @since 1.9.7
+	 *
+	 * @return bool True if up to date, false otherwise.
+	 */
+	private function is_plugin_version_up_to_date(): bool {
+
+		if ( ! empty( $this->splash_data['blocks'] ) && is_array( $this->splash_data['blocks'] ) ) {
+			// Get the first block and check its version.
+			$first_block = reset( $this->splash_data['blocks'] );
+
+			// If the first block has a version, and it's greater than the current user version, that means the splash contains features that are not available to the user.
+			if ( ! empty( $first_block['version'] ) && version_compare( $first_block['version'], $this->get_user_version(), '>' ) ) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	/**
 	 * Add a splash link to footer.
 	 *
 	 * @since 1.8.7
+	 * @deprecated 1.9.7
 	 *
 	 * @param string|mixed $content Footer content.
 	 *
 	 * @return string Footer content.
 	 */
 	public function add_splash_link( $content ): string {
-
-		$content = (string) $content;
-
-		if ( ! $this->is_available_for_display() ) {
-			return $content;
-		}
-
-		// Allow only on WPForms pages and the Dashboard.
-		if ( ! $this->is_allow_splash() || $this->is_new_install() ) {
-			return $content;
-		}
-
-		// Do not output the link in the footer on the dashboard.
-		if ( $this->is_dashboard() && current_filter() === 'update_footer' ) {
-			return $content;
-		}
-
-		$content .= sprintf(
-			' <span>-</span> <a href="#" class="wpforms-splash-modal-open">%s</a>',
-			__( 'See the new features!', 'wpforms-lite' )
-		);
 
 		return $content;
 	}
@@ -258,20 +230,11 @@ class SplashScreen {
 	 * Used in footer and in form builder context menu.
 	 *
 	 * @since 1.8.8
+	 * @deprecated 1.9.7
 	 *
 	 * @return bool
 	 */
 	public function is_available_for_display(): bool {
-
-		// Return if splash data is empty.
-		if ( $this->is_splash_empty() ) {
-			return false;
-		}
-
-		// Return if a splash data version is different from the current plugin major version.
-		if ( $this->get_splash_data_version() !== $this->get_major_version( WPFORMS_VERSION ) ) {
-			return false;
-		}
 
 		return true;
 	}
@@ -279,7 +242,6 @@ class SplashScreen {
 	/**
 	 * Check if splash modal is allowed.
 	 * Only allow in Form Builder, WPForms pages, and the Dashboard.
-	 * And only if it's not a new installation.
 	 *
 	 * @since 1.8.7
 	 *
@@ -287,11 +249,6 @@ class SplashScreen {
 	 */
 	public function is_allow_splash(): bool {
 
-		if ( ! $this->is_force_open() && ( $this->is_new_install() || $this->is_minor_update() ) ) {
-			return false;
-		}
-
-		// Only show on WPForms pages OR dashboard.
 		return wpforms_is_admin_page( 'builder' ) || wpforms_is_admin_page() || $this->is_dashboard();
 	}
 
@@ -362,7 +319,7 @@ class SplashScreen {
 	 */
 	private function is_allow_builder_splash(): bool {
 
-		$challenge = wpforms()->get( 'challenge' );
+		$challenge = wpforms()->obj( 'challenge' );
 
 		return ! ( $challenge->challenge_force_start() || $challenge->challenge_can_start() );
 	}
@@ -447,5 +404,16 @@ class SplashScreen {
 		$removable_query_args[] = 'wpforms_action';
 
 		return $removable_query_args;
+	}
+
+	/**
+	 * Reset splash data after license update.
+	 *
+	 * @since 1.9.7
+	 */
+	public function reset_splash_data(): void {
+
+		// Force update splash data cache.
+		wpforms()->obj( 'splash_cache' )->update( true );
 	}
 }

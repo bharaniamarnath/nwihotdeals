@@ -36,6 +36,8 @@ class Woo_Config {
 
             // For Universal Layout
             add_action('woolentor_universal_before_title', array( $this, 'loop_variation_form_html'), 0 );
+            // Common Hook for WooLentor Product Showcase Addon
+            add_action('woolentor_product_addon_before_title', array( $this, 'loop_variation_form_html'), 0 );
         }
 
         // after title
@@ -48,6 +50,8 @@ class Woo_Config {
             
             // For Universal Layout
             add_action('woolentor_universal_after_title', array( $this, 'loop_variation_form_html'), 0 );
+            // Common Hook for WooLentor Product Showcase Addon
+            add_action('woolentor_product_addon_after_title', array( $this, 'loop_variation_form_html'), 0 );
         }
 
         // before price
@@ -60,6 +64,8 @@ class Woo_Config {
 
             // For Universal Layout
             add_action('woolentor_universal_before_price', array( $this, 'loop_variation_form_html'), 0 );
+            // Common Hook for WooLentor Product Showcase Addon
+            add_action('woolentor_product_addon_before_price', array( $this, 'loop_variation_form_html'), 0 );
         }
 
         // after price
@@ -72,6 +78,8 @@ class Woo_Config {
 
             // For Universal Layout
             add_action('woolentor_universal_after_price', array( $this, 'loop_variation_form_html'), 0 );
+            // Common Hook for WooLentor Product Showcase Addon
+            add_action('woolentor_product_addon_after_price', array( $this, 'loop_variation_form_html'), 0 );
         }
 
         // custom position
@@ -879,6 +887,10 @@ class Woo_Config {
         }
 
         global $product;
+        if ( !$product && !is_a( $product, 'WC_Product' ) ) {
+            return;
+        }
+
         if ( ! $product->is_type( 'variable' ) ) {
             return;
         }
@@ -958,9 +970,9 @@ class Woo_Config {
    /**
     * The current product attribute is checked to see if it is listed in the catalog mode attributes.
     * 
-    * @param product_attributes An array of all the product attributes.
-    * @param attribute_name The attribute name you want to check.
-    * @param condition check_does_not_match or check_exact_match
+    * @param [product_attributes] An array of all the product attributes.
+    * @param [attribute_name] The attribute name you want to check.
+    * @param [condition] check_does_not_match or check_exact_match
     */
     public function check_catalog_mode_match( $attribute_name ){
         $enable_catalog_mode       = Helper::get_option('pl_enable_catalog_mode');
@@ -974,7 +986,7 @@ class Woo_Config {
             }
         }
 
-        $custom_catalog_attributes = Helper::get_option('pl_catalog_custom_attributes');
+        $custom_catalog_attributes = Helper::get_option('pl_catalog_custom_attributes') != null ? Helper::get_option('pl_catalog_custom_attributes') : '';
         $custom_catalog_attributes = explode(PHP_EOL, $custom_catalog_attributes);
         $custom_catalog_attributes = array_map('trim', $custom_catalog_attributes); // remove white space from end of elements
 

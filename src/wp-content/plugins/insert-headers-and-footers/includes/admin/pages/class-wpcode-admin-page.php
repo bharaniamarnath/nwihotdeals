@@ -10,6 +10,8 @@
  */
 abstract class WPCode_Admin_Page {
 
+	use WPCode_Library_Refresh_Button;
+
 	/**
 	 * The page slug.
 	 *
@@ -119,6 +121,7 @@ abstract class WPCode_Admin_Page {
 			wp_die( esc_html__( 'You do not have permission to access this page.', 'insert-headers-and-footers' ) );
 		}
 		remove_all_actions( 'admin_notices' );
+		remove_all_actions( 'all_admin_notices' );
 		add_action( 'wpcode_admin_page', array( $this, 'output' ) );
 		add_action( 'wpcode_admin_page', array( $this, 'output_footer' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'page_scripts' ) );
@@ -147,7 +150,6 @@ abstract class WPCode_Admin_Page {
 	 * @return void
 	 */
 	public function page_hooks() {
-
 	}
 
 	/**
@@ -175,7 +177,6 @@ abstract class WPCode_Admin_Page {
 	 * @return void
 	 */
 	protected function setup_views() {
-
 	}
 
 	/**
@@ -435,23 +436,27 @@ abstract class WPCode_Admin_Page {
 				absint( $notifications_count )
 			);
 		}
+
+		// Add the "Check for Updates" button before the testing mode toggle.
+		$this->add_check_for_updates_button();
+
 		echo '<span class="wpcode-toggle-testing-mode-wrap">';
 		echo $this->get_checkbox_toggle( wpcode_testing_mode_enabled(), 'wpcode-toggle-testing-mode', '', '', esc_html__( 'Testing Mode', 'insert-headers-and-footers' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		echo '</span>';
 		?>
-		<button
-				type="button"
-				id="wpcode-notifications-button"
-				class="wpcode-button-just-icon wpcode-notifications-inbox wpcode-open-notifications"
-				data-dismissed="<?php echo esc_attr( $dismissed_count ); ?>"
+			<button
+					type="button"
+					id="wpcode-notifications-button"
+					class="wpcode-button-just-icon wpcode-notifications-inbox wpcode-open-notifications"
+					data-dismissed="<?php echo esc_attr( $dismissed_count ); ?>"
 			<?php echo $data_count; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
 			<?php wpcode_icon( 'inbox', 15, 16 ); ?>
-		</button>
-		<button class="wpcode-text-button-icon wpcode-show-help" type="button">
+			</button>
+			<button class="wpcode-text-button-icon wpcode-show-help" type="button">
 			<?php wpcode_icon( 'help', 21 ); ?>
 			<?php esc_html_e( 'Help', 'insert-headers-and-footers' ); ?>
-		</button>
-		<?php
+			</button>
+			<?php
 	}
 
 	/**
@@ -461,7 +466,6 @@ abstract class WPCode_Admin_Page {
 	 * @return void
 	 */
 	public function output_header_bottom() {
-
 	}
 
 	/**
@@ -556,7 +560,8 @@ abstract class WPCode_Admin_Page {
 	}
 
 	/**
-	 * Add a page-specific body class using the page slug variable..
+	 * Add a page-specific body class using the page slug variable.
+	 * Add a body class specific to the plugin version (lite/pro).
 	 *
 	 * @param string $body_class The body class to append.
 	 *
@@ -564,7 +569,13 @@ abstract class WPCode_Admin_Page {
 	 */
 	public function page_specific_body_class( $body_class ) {
 
-		$body_class .= ' ' . $this->page_slug;
+		$body_class .= ' ' . $this->page_slug . ' ';
+
+		if ( ! class_exists( 'WPCode_Premium' ) ) {
+			$body_class .= ' wpcode-lite-version ';
+		} else {
+			$body_class .= ' wpcode-pro-version ';
+		}
 
 		return $body_class;
 	}
@@ -669,7 +680,7 @@ abstract class WPCode_Admin_Page {
 		}
 		$id = ! empty( $id ) ? 'id="' . esc_attr( $id ) . '"' : '';
 		?>
-		<div class="wpcode-metabox-form-row" <?php echo $show_if_rules; ?> <?php echo $id; ?>>
+		<div class="wpcode-metabox-form-row" <?php echo $show_if_rules; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?> <?php echo $id; ?>>
 			<div class="wpcode-metabox-form-row-label">
 				<label for="<?php echo esc_attr( $input_id ); ?>">
 					<?php echo esc_html( $label ); ?>
@@ -920,12 +931,12 @@ abstract class WPCode_Admin_Page {
 	 *
 	 * @return void
 	 */
-	public function get_library_markup( $categories, $snippets, $item_method = 'get_library_snippet_item' ) {
+	public function get_library_markup( $categories, $snippets, $item_method = 'get_library_snippet_item', $type = 'library' ) {
 		$selected_category = isset( $categories[0]['slug'] ) ? $categories[0]['slug'] : '*';
 		$count             = 0;
 		foreach ( $snippets as $snippet ) {
 			if ( isset( $snippet['needs_auth'] ) && empty( $snippet['skip_count'] ) ) {
-				$count ++;
+				++$count;
 			}
 		}
 		$categories = $this->add_item_counts( $categories, $snippets );
@@ -934,7 +945,7 @@ abstract class WPCode_Admin_Page {
 		?>
 		<div class="wpcode-items-metabox wpcode-metabox">
 			<?php $this->get_items_list_sidebar( $categories, __( 'All Snippets', 'insert-headers-and-footers' ), __( 'Search Snippets', 'insert-headers-and-footers' ), $selected_category, $count ); ?>
-			<div class="wpcode-items-list">
+			<div class="wpcode-items-list" data-type="<?php echo esc_attr( $type ); ?>">
 				<?php
 				if ( empty( $snippets ) ) {
 					?>
@@ -977,7 +988,7 @@ abstract class WPCode_Admin_Page {
 				if ( ! isset( $category_counts[ $category ] ) ) {
 					$category_counts[ $category ] = 0;
 				}
-				$category_counts[ $category ] ++;
+				++$category_counts[ $category ];
 			}
 		}
 
@@ -1009,17 +1020,20 @@ abstract class WPCode_Admin_Page {
 		$need_auth_count = 0;
 		foreach ( $snippets as $snippet ) {
 			if ( ! empty( $snippet['needs_auth'] ) ) {
-				$need_auth_count ++;
+				++$need_auth_count;
 			}
 		}
 		if ( $need_auth_count > 0 ) {
-			$categories = array_merge( array(
+			$categories = array_merge(
 				array(
-					'name'  => __( 'Available Snippets', 'insert-headers-and-footers' ),
-					'slug'  => 'available',
-					'count' => $total - $need_auth_count,
-				)
-			), $categories );
+					array(
+						'name'  => __( 'Available Snippets', 'insert-headers-and-footers' ),
+						'slug'  => 'available',
+						'count' => $total - $need_auth_count,
+					),
+				),
+				$categories
+			);
 		}
 
 		return $categories;
@@ -1115,6 +1129,8 @@ abstract class WPCode_Admin_Page {
 			</div>
 			<div class="wpcode-library-preview-buttons">
 				<a class="wpcode-button wpcode-button-wide" id="wpcode-preview-use-code"><?php esc_html_e( 'Use Snippet', 'insert-headers-and-footers' ); ?></a>
+				<a class="wpcode-button wpcode-button-secondary wpcode-my-library-buttons" id="wpcode-preview-edit-snippet" target="_blank"><?php esc_html_e( 'Edit in Library', 'insert-headers-and-footers' ); ?></a>
+				<div class="wpcode-preview-updated wpcode-my-library-buttons" id="wpcode-preview-updated"></div>
 			</div>
 		</div>
 		<?php
@@ -1249,7 +1265,6 @@ abstract class WPCode_Admin_Page {
 		$html .= '</div>';
 
 		return $html;
-
 	}
 
 	/**

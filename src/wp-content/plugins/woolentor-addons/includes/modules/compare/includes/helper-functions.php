@@ -1,21 +1,4 @@
 <?php
-/**
- * Get Post List
- * return array
- */
-function ever_compare_get_post_list( $post_type = 'page' ){
-    $options = array();
-    $options['0'] = __('Select','ever-compare');
-    $perpage = -1;
-    $all_post = array( 'posts_per_page' => $perpage, 'post_type'=> $post_type );
-    $post_terms = get_posts( $all_post );
-    if ( ! empty( $post_terms ) && ! is_wp_error( $post_terms ) ){
-        foreach ( $post_terms as $term ) {
-            $options[ $term->ID ] = $term->post_title;
-        }
-        return $options;
-    }
-}
 
 /**
  * [ever_compare_locate_template]
@@ -121,7 +104,7 @@ function ever_compare_table_heading(){
     $new_list = array();
     $field_list = count( ever_compare_table_active_heading() ) > 0 ? ever_compare_table_active_heading() : ever_compare_get_default_fields();
     foreach ( $field_list as $key => $value ) {
-        $new_list[$key] = \EverCompare\Frontend\Manage_Compare::instance()->field_name( $key );
+        $new_list[$key] = class_exists( '\EverCompare\Frontend\Manage_Compare' ) ? \EverCompare\Frontend\Manage_Compare::instance()->field_name( $key ) : '';
     }
     return $new_list;
 }

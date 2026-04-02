@@ -80,6 +80,14 @@ class Vendors_Settings {
             'give_tax'              => 'wcv_give_vendor_tax',
             'give_shipping'         => 'wcv_give_vendor_shipping',
             'vendor_status'         => '_wcv_vendor_status',
+            'store_url'             => '_wcv_company_url',
+            'store_phone'           => '_wcv_store_phone',
+            'store_address'         => '_wcv_store_address1',
+            'store_address2'        => '_wcv_store_address2',
+            'store_city'            => '_wcv_store_city',
+            'store_postcode'        => '_wcv_store_postcode',
+            'store_country'         => '_wcv_store_country',
+            'store_state'           => '_wcv_store_state',
         ),
         'wcvp' => array(
             'commission_type'            => '_wcv_commission_type',
@@ -87,14 +95,6 @@ class Vendors_Settings {
             'commission_amount'          => '_wcv_commission_amount',
             'commission_fee'             => '_wcv_commission_fee',
             'commission_tiers'           => 'wcv_vendor_commission_tiers',
-            'store_url'                  => '_wcv_company_url',
-            'store_phone'                => '_wcv_store_phone',
-            'store_address'              => '_wcv_store_address1',
-            'store_address2'             => '_wcv_store_address2',
-            'store_city'                 => '_wcv_store_city',
-            'store_postcode'             => '_wcv_store_postcode',
-            'store_country'              => '_wcv_store_country',
-            'store_state'                => '_wcv_store_state',
             'store_lat'                  => 'wcv_address_latitude',
             'store_lng'                  => 'wcv_address_longitude',
             'verified_vendor'            => '_wcv_verified_vendor',
@@ -155,26 +155,59 @@ class Vendors_Settings {
     public $changes = array();
 
     /**
+     * Error message
+     *
+     * @var string
+     *
+     * @since 2.5.7
+     * @version 2.5.7
+     */
+    public $error = '';
+
+    /**
+     * Valid vendor flag
+     *
+     * @var bool
+     *
+     * @since 2.5.7
+     * @version 2.5.7
+     */
+    public $valid_vendor = false;
+
+    /**
      * Constructor
      *
-     * @param int     $vendor_id (default: false) The vendor ID to load.
-     * @param boolean $view (default: true) Whether to load the settings.
-     * @access public
-     * @return void
-     * @throws Exception If the vendor ID is invalid.
+     * @param int  $vendor_id Vendor ID.
+     * @param bool $view View vendor settings.
      *
-     * @since 2.4.8
-     * @version 2.4.8
+     * @throws Exception If vendor ID is invalid.
      */
     public function __construct( $vendor_id = false, $view = true ) {
+        $data_keys       = $this->get_keys();
+        $this->data_keys = $data_keys;
         if ( $vendor_id && ( WCV_Vendors::is_vendor( $vendor_id ) || WCV_Vendors::is_pending( $vendor_id ) ) ) {
-            $this->vendor_id = (int) $vendor_id;
+            $this->vendor_id    = (int) $vendor_id;
+            $this->valid_vendor = true;
             if ( $view ) {
                 $this->settings = $this->get_settings();
             }
         } else {
-            throw new Exception( esc_html__( 'Invalid vendor ID', 'wc-vendors' ) );
+            // Set error message but don't throw exception.
+            $this->error        = new WP_Error( 'invalid_vendor_id', esc_html__( 'Invalid vendor ID', 'wc-vendors' ) );
+            $this->valid_vendor = false;
         }
+    }
+
+    /**
+     * Check if the vendor is valid
+     *
+     * @return bool
+     *
+     * @since 2.5.7
+     * @version 2.5.7
+     */
+    public function is_valid() {
+        return $this->valid_vendor;
     }
 
     /**
@@ -315,12 +348,12 @@ class Vendors_Settings {
         if ( isset( $settings['shipping_table_rates'] ) && empty( $settings['shipping_table_rates'] ) ) {
             $settings['shipping_table_rates'] = array(
                 array(
-					'country'      => '',
-					'fee'          => '',
-					'postcode'     => '',
-					'qty_override' => '',
-					'region'       => '',
-					'state'        => '',
+                    'country'      => '',
+                    'fee'          => '',
+                    'postcode'     => '',
+                    'qty_override' => '',
+                    'region'       => '',
+                    'state'        => '',
                 ),
             );
         }
@@ -416,19 +449,57 @@ class Vendors_Settings {
      * Save settings
      *
      * @access public
-     * @return array The settings that have changed.
+     * @return bool|WP_Error The settings that have changed, WP_Error if there is an error.
      *
      * @since 2.4.8
      * @version 2.4.8
+     * @version 2.6.6 - Return WP_Error instead of false.
      */
     public function save() {
 
         $changes = $this->get_changes();
         if ( empty( $changes ) ) {
-            return false;
+            return new WP_Error( 'no_changes', esc_html__( 'No changes to save', 'wc-vendors' ) );
         }
 
-        $media_fields = $this->get_media_fields();
+        // Validate shop name is not empty to prevent 404 errors with shop slug.
+        if ( isset( $changes['shop_name'] ) ) {
+            $shop_name_trimmed = trim( $changes['shop_name'] );
+            if ( empty( $shop_name_trimmed ) ) {
+                return new WP_Error( 'shop_name_empty', esc_html__( 'Shop name cannot be empty', 'wc-vendors' ) );
+            }
+        }
+
+        $media_fields       = $this->get_media_fields();
+        $vacation_mode      = isset( $changes['vacation_mode'] ) ? $changes['vacation_mode'] : 'no';
+        $lock_new_products  = isset( $changes['lock_new_products'] ) ? $changes['lock_new_products'] : 'no';
+        $lock_edit_products = isset( $changes['lock_edit_products'] ) ? $changes['lock_edit_products'] : 'no';
+
+        if ( 'yes' !== $lock_new_products ) {
+            delete_user_meta( $this->vendor_id, '_wcv_lock_new_products_vendor' );
+            delete_user_meta( $this->vendor_id, '_wcv_lock_new_products_vendor_msg' );
+            unset( $changes['lock_new_products_msg'] );
+        }
+
+        if ( 'yes' !== $lock_edit_products ) {
+            delete_user_meta( $this->vendor_id, '_wcv_lock_edit_products_vendor' );
+            delete_user_meta( $this->vendor_id, '_wcv_lock_edit_products_vendor_msg' );
+            unset( $changes['lock_edit_products_msg'] );
+        }
+
+        if ( 'yes' !== $vacation_mode ) {
+            delete_user_meta( $this->vendor_id, '_wcv_vacation_mode' );
+            delete_user_meta( $this->vendor_id, '_wcv_vacation_mode_msg' );
+            delete_user_meta( $this->vendor_id, '_wcv_vacation_disable_cart' );
+            unset( $changes['vacation_mode_msg'] );
+            unset( $changes['disable_cart'] );
+            unset( $changes['vacation_mode'] );
+        }
+
+        $allow_shop_desc_html    = wc_string_to_bool( get_option( 'wcvendors_display_shop_description_html', 'no' ) );
+        $override_shop_desc_html = wc_string_to_bool( isset( $changes['html_enabled'] ) ? $changes['html_enabled'] : 'no' );
+        $allow_markup            = wc_string_to_bool( get_option( 'wcvendors_allow_form_markup', 'no' ) );
+        $policy_html             = wc_string_to_bool( get_option( 'wcvendors_allow_settings_policy_html', 'no' ) );
 
         foreach ( $changes as $field => $value ) {
             $section = $this->get_section( $field );
@@ -443,9 +514,61 @@ class Vendors_Settings {
             if ( in_array( $field, $media_fields, true ) ) {
                 $value = (string) $value['id'];
             }
+
             if ( ! isset( $this->data_keys[ $section ][ $field ] ) ) {
                 continue;
             }
+
+            if ( 'shop_description' === $field ) {
+                $striped_store_description = $allow_shop_desc_html || $override_shop_desc_html ? wp_kses( $value, wcv_allowed_html_tags() ) : wp_strip_all_tags( $value );
+                $value                     = $striped_store_description;
+            }
+
+            if ( 'seller_info' === $field ) {
+                $striped_seller_info = $allow_markup ? wp_kses( $value, wcv_allowed_html_tags() ) : wp_strip_all_tags( $value );
+                $value               = $striped_seller_info;
+            }
+
+            if ( 'terms_and_conditions' === $field || 'privacy_policy' === $field ) {
+                $striped_policy = $policy_html ? wp_kses( $value, wcv_allowed_html_tags() ) : wp_strip_all_tags( $value );
+                $value          = $striped_policy;
+            }
+
+            if ( 'shipping_flat_rate' === $field ) {
+
+                if ( isset( $value['shipping_policy'] ) ) {
+                    $value['shipping_policy'] = $policy_html ? wp_kses( $value['shipping_policy'], wcv_allowed_html_tags() ) : wp_strip_all_tags( $value['shipping_policy'] );
+                }
+                if ( isset( $value['return_policy'] ) ) {
+                    $value['return_policy'] = $policy_html ? wp_kses( $value['return_policy'], wcv_allowed_html_tags() ) : wp_strip_all_tags( $value['return_policy'] );
+                }
+            }
+
+            $manual_sanitize_fields = array(
+                'shop_description',
+                'seller_info',
+                'privacy_policy',
+                'terms_and_conditions',
+                'shipping_flat_rate',
+            );
+
+            if ( ! in_array( $field, $manual_sanitize_fields, true ) ) {
+
+                $type = gettype( $value );
+
+                switch ( $type ) {
+                    case 'string':
+                        $value = sanitize_text_field( $value );
+                        break;
+                    case 'array':
+                        $value = wcv_recursive_sanitize_array( $value );
+                        break;
+                    case 'float':
+                        $value = floatval( $value );
+                        break;
+                }
+            }
+
             $result = update_user_meta( $this->vendor_id, $this->data_keys[ $section ][ $field ], $value );
             if ( $result ) {
                 $this->change_shop_slug( $field, $value );
@@ -474,7 +597,7 @@ class Vendors_Settings {
     }
 
     /**
-     * Get current comission rates
+     * Get current commission rates
      *
      * @return array
      * @since 2.4.8
@@ -568,19 +691,19 @@ class Vendors_Settings {
     /**
      * Get commission due
      *
-     * @return float The commission due
+     * @return array The commission due
      *
-     * @since 2.4.8
+     * @since   2.4.8
      * @version 2.4.8
      */
     public function get_commission_due() {
         global $wpdb;
         $sql    = $wpdb->prepare( "SELECT SUM( total_due ) FROM `{$wpdb->prefix}pv_commission` WHERE vendor_id = %d AND status = 'due'", $this->vendor_id );
-        $result = $wpdb->get_var( $sql ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        $result = $wpdb->get_var( $sql ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
         $result = ! empty( $result ) ? $result : 0;
         return array(
-			'total'     => $result,
-			'formatted' => wc_price( $result ),
+            'total'     => $result,
+            'formatted' => wc_price( $result ),
         );
     }
 
@@ -617,17 +740,29 @@ class Vendors_Settings {
      * @param string $field The field key.
      * @param string $value The field value.
      *
-     * @version 2.4.8
+     * @version 2.6.5 Fix security issues.
      * @since 2.4.8
+     * @version 2.6.6 - Return WP_Error if shop name is empty.
      */
     public function change_shop_slug( $field, $value ) {
         if ( 'shop_name' === $field ) {
+            // Ensure shop name is not empty before generating slug.
+            $value = trim( $value );
+            if ( empty( $value ) ) {
+                return new WP_Error( 'shop_name_empty', esc_html__( 'Shop name cannot be empty', 'wc-vendors' ) );
+            }
+
             $shop_slug = sanitize_title( $value );
+
+            // If sanitization results in an empty slug, use vendor ID as fallback.
+            if ( empty( $shop_slug ) ) {
+                $shop_slug = 'vendor-' . $this->vendor_id;
+            }
 
             $check        = new WP_User_Query(
                 array(
-                    'meta_key'   => 'pv_shop_slug',
-                    'meta_value' => $shop_slug,
+                    'meta_key'   => 'pv_shop_slug', // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
+                    'meta_value' => $shop_slug, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value
                 )
             );
             $result       = $check->get_results();

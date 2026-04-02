@@ -108,12 +108,9 @@ final class Base {
         // After Active Plugin then redirect to setting page
         $this->plugin_redirect_option_page();
 
-        /**
-         * [$template_info] Assign template data
-         * @var [type]
-         */
+        // Migration: Delete old transients and use file-based cache
         if( is_admin() && class_exists('\Woolentor_Template_Library_Manager') ){
-            self::$template_info = \Woolentor_Template_Library_Manager::instance()->get_templates_info();
+            $this->migrate_template_cache();
         }
 
         // Admin Notices
@@ -155,6 +152,7 @@ final class Base {
 				'type'        => 'error',
                 'button'      => $button,
 				'message'     => $message,
+				'is_show'     => true,
 			]
 		);
     }
@@ -203,7 +201,7 @@ final class Base {
      * @return void
      */
     public function admin_rating_notice(){
-        $logo_url = esc_url(WOOLENTOR_ADDONS_PL_URL . "includes/admin/assets/images/logo.png");
+        $logo_url = esc_url(WOOLENTOROPT_ASSETS.'/images/logo.png');
 
         $message = '<div class="hastech-review-notice-wrap">
                     <div class="hastech-rating-notice-logo">
@@ -237,6 +235,36 @@ final class Base {
     }
 
     /**
+     * Migrate template cache from transient to file-based cache
+     * One-time migration
+     *
+     * @return void
+     */
+    public function migrate_template_cache(){
+        $migrated = get_option( 'woolentor_cache_migrated_v2', false );
+
+        if ( ! $migrated ) {
+            // Delete old transients
+            \Woolentor_Template_Library_Manager::migrate_from_transient();
+
+            // Mark as migrated
+            update_option( 'woolentor_cache_migrated_v2', true );
+        }
+    }
+
+    /**
+     * Get template info (lazy load)
+     *
+     * @return array
+     */
+    public static function get_template_info(){
+        if( empty( self::$template_info ) && class_exists('\Woolentor_Template_Library_Manager') ){
+            self::$template_info = \Woolentor_Template_Library_Manager::instance()->get_templates_info();
+        }
+        return self::$template_info;
+    }
+
+    /**
      * [admin_promo_notice]
      * @return [void] Promo banner admin notice
      */
@@ -246,12 +274,15 @@ final class Base {
             return;
         }
 
-        if( !isset( self::$template_info['notices'] ) || !is_array( self::$template_info['notices'] ) ){
+        // Lazy load template info
+        $template_info = self::get_template_info();
+
+        if( !isset( $template_info['notices'] ) || !is_array( $template_info['notices'] ) ){
             return;
         }
 
-        if( isset( self::$template_info['notices'][0]['status'] ) ){
-            if( self::$template_info['notices'][0]['status'] == 0 ){
+        if( isset( $template_info['notices'][0]['status'] ) ){
+            if( $template_info['notices'][0]['status'] == 0 ){
                 return;
             }
         }else{
@@ -259,10 +290,10 @@ final class Base {
         }
 
         // Fetch data
-        $bannerLink = self::$template_info['notices'][0]['bannerlink'] ? self::$template_info['notices'][0]['bannerlink'] : '#';
-        $bannerTitle = self::$template_info['notices'][0]['title'] ? self::$template_info['notices'][0]['title'] : esc_html__('Promo Banner','woolentor');
-        $bannerDescription = self::$template_info['notices'][0]['description'] ? self::$template_info['notices'][0]['description'] : '';
-        $bannerImage = self::$template_info['notices'][0]['bannerimage'] ? '<img src="'.esc_url(self::$template_info['notices'][0]['bannerimage']).'" alt="'.esc_attr($bannerTitle).'"/>' : '';
+        $bannerLink = $template_info['notices'][0]['bannerlink'] ? $template_info['notices'][0]['bannerlink'] : '#';
+        $bannerTitle = $template_info['notices'][0]['title'] ? $template_info['notices'][0]['title'] : esc_html__('Promo Banner','woolentor');
+        $bannerDescription = $template_info['notices'][0]['description'] ? $template_info['notices'][0]['description'] : '';
+        $bannerImage = $template_info['notices'][0]['bannerimage'] ? '<img src="'.esc_url($template_info['notices'][0]['bannerimage']).'" alt="'.esc_attr($bannerTitle).'"/>' : '';
 
         $banner['image'] = $bannerImage;
         $banner['url'] = $bannerLink;
@@ -273,16 +304,16 @@ final class Base {
                 'dismissible' => true,
                 'message'     => $bannerDescription,
                 'banner'      => $banner,
-                'close_by'    => 'transient',
+                'close_by'    => 'user',
                 'priority'    => 2
             ]
         );
-           
+
     }
 
    /**
     * [is_plugins_install] Check Plugin is Installed or not
-    * @param  [string]  $pl_file_path plugin file path
+    * @param  [string] $pl_file_path plugin file path
     * @return boolean  true|false
     */
     public function is_plugins_install( $pl_file_path = NULL ){
@@ -336,6 +367,7 @@ final class Base {
      */
     public function plugin_deactivation_hook() {
         delete_metadata( 'user', 0, 'hastech-notice-id-wlagency-bundle-promo-banner', null, true );
+        update_option( 'woolentor_plugin_permalinks_flushed', 'no' );
     }
 
     /**
@@ -346,7 +378,12 @@ final class Base {
         if ( get_option( 'woolentor_do_activation_redirect', FALSE ) ) {
             delete_option('woolentor_do_activation_redirect');
             if( !isset( $_GET['activate-multi'] ) ){
-                wp_redirect( admin_url("admin.php?page=woolentor") );
+                if ( ! get_option( 'woolentor_setup_wizard_completed', false ) ) {
+                    wp_redirect( admin_url( 'admin.php?page=woolentor#/setup-wizard' ) );
+                } else {
+                    wp_redirect( admin_url( 'admin.php?page=woolentor' ) );
+                }
+                exit;
             }
         }
     }
@@ -374,41 +411,56 @@ final class Base {
      *
      * @return void
      */
-    public function track_user_viewed_products(){
+
+     public function track_user_viewed_products(){
 
         global $post;
-
+    
         if ( is_null( $post ) || $post->post_type != 'product' || !is_product() ) {
             return;
         }
-
+    
         $products_list = woolentor_get_track_user_data();
         $user_id       = get_current_user_id();
         $cookie_name   = woolentor_get_cookie_name( 'viewed_products_list' );
-
-		$product_id = get_the_id();
-
-        // Check current product is exists in the list.
+    
+        $product_id = get_the_id();
+    
+        // Initialize products_list as array if it's not already
+        if (!is_array($products_list)) {
+            $products_list = [];
+        }
+    
+        // Check current product exists in the list and remove it
         if ( ( $key = array_search( $product_id, $products_list ) ) !== false ) {
             unset( $products_list[$key] );
         }
-
+    
         $timestamp = time();
         $products_list[$timestamp] = $product_id;
-
+    
+        // MEMORY FIX: Limit the size of the products list to prevent memory exhaustion
+        $max_products_limit = apply_filters( 'woolentor_max_viewed_products', 100 ); // Default limit: 100 products
+        
+        if ( count( $products_list ) > $max_products_limit ) {
+            // Sort by timestamp (keys) and keep only the most recent products
+            ksort( $products_list );
+            $products_list = array_slice( $products_list, -$max_products_limit, null, true );
+        }
+    
         // Set cookie or save user meta
         $cookie_duration = 5;
         $cookie_duration = time() + (86400 * $cookie_duration);
-
+    
         if ( $user_id ) {
             update_user_meta( $user_id, $cookie_name, $products_list );
         } else {
             setcookie( $cookie_name, serialize( $products_list ), $cookie_duration, COOKIEPATH, COOKIE_DOMAIN, false, true );
         }
-
+    
         // Set View Count
         woolentor_set_views_count( $product_id, 'product' );
-
+    
     }
 
    /**
@@ -434,36 +486,42 @@ final class Base {
      */
     public function include_files(){
 
-        require( WOOLENTOR_ADDONS_PL_PATH.'includes/helper-function.php' );
-        require( WOOLENTOR_ADDONS_PL_PATH.'classes/class.assest_management.php' );
-        require( WOOLENTOR_ADDONS_PL_PATH.'classes/class.widgets_control.php' );
-        require( WOOLENTOR_ADDONS_PL_PATH.'classes/class.default_data.php' );
-        require( WOOLENTOR_ADDONS_PL_PATH.'classes/class.quickview_manage.php' );
-        require( WOOLENTOR_ADDONS_PL_PATH.'classes/class.icon_list.php' );
-        require( WOOLENTOR_ADDONS_PL_PATH.'classes/class.multi_language.php' );
-        require( WOOLENTOR_ADDONS_PL_PATH.'classes/class.ajax_actions.php' );
+        require_once( WOOLENTOR_ADDONS_PL_PATH.'includes/helper-function.php' );
+        woolentor_include_all(WOOLENTOR_ADDONS_PL_PATH.'includes/traits');
+        require_once( WOOLENTOR_ADDONS_PL_PATH.'classes/class.assest_management.php' );
+        require_once( WOOLENTOR_ADDONS_PL_PATH.'classes/class.widgets_control.php' );
+        require_once( WOOLENTOR_ADDONS_PL_PATH.'classes/class.default_data.php' );
+        require_once( WOOLENTOR_ADDONS_PL_PATH.'classes/class.icon_list.php' );
+        require_once( WOOLENTOR_ADDONS_PL_PATH.'classes/class.multi_language.php' );
+        require_once( WOOLENTOR_ADDONS_PL_PATH.'classes/class.ajax_actions.php' );
 
         // Admin Setting file
         if( is_admin() ){
-            require( WOOLENTOR_ADDONS_PL_PATH.'includes/custom-metabox.php' );
-            require( WOOLENTOR_ADDONS_PL_PATH.'includes/admin/admin-init.php' );
+            require_once( WOOLENTOR_ADDONS_PL_PATH.'includes/custom-metabox.php' );
+            require_once( WOOLENTOR_ADDONS_PL_PATH.'includes/admin/admin-init.php' );
         }
+
+        // Vue Dashboard
+        require_once( WOOLENTOR_ADDONS_PL_PATH .'includes/admin-panel/settings-panel.php');
 
         // Builder File
         if( woolentor_get_option( 'enablecustomlayout', 'woolentor_woo_template_tabs', 'on' ) == 'on' ){
 
-            require( WOOLENTOR_ADDONS_PL_PATH.'includes/manage_wc_template.php' );
-            require( WOOLENTOR_ADDONS_PL_PATH.'includes/archive_product_render.php' );           
-            require( WOOLENTOR_ADDONS_PL_PATH.'includes/class.product_video_gallery.php' );
-            require( WOOLENTOR_ADDONS_PL_PATH.'classes/class.product_query.php' );
-            require( WOOLENTOR_ADDONS_PL_PATH.'classes/class.third_party.php' );
+            require_once( WOOLENTOR_ADDONS_PL_PATH.'includes/manage_wc_template.php' );
+            require_once( WOOLENTOR_ADDONS_PL_PATH.'includes/archive_product_render.php' );           
+            require_once( WOOLENTOR_ADDONS_PL_PATH.'includes/class.product_video_gallery.php' );
+            require_once( WOOLENTOR_ADDONS_PL_PATH.'classes/class.product_query.php' );
+            require_once( WOOLENTOR_ADDONS_PL_PATH.'classes/class.third_party.php' );
         }
 
+        // Product Query Manager
+        require_once( WOOLENTOR_ADDONS_PL_PATH . 'classes/class.woocommerce_query_manager.php' );
+
         // Page Action
-        require( WOOLENTOR_ADDONS_PL_PATH. 'classes/class.page_action.php' );
+        require_once( WOOLENTOR_ADDONS_PL_PATH. 'classes/class.page_action.php' );
 
         // Modules Manager
-        require( WOOLENTOR_ADDONS_PL_PATH. 'includes/modules/class.module-manager.php' );
+        require_once( WOOLENTOR_ADDONS_PL_PATH. 'includes/modules/class.module-manager.php' );
 
 
     }

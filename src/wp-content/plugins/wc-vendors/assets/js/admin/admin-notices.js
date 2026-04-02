@@ -1,19 +1,20 @@
 (function($) {
   $(document).ready(function() {
     var noticeContainer = $('.wcv-notice-container');
-    var isDelay = 'no';
-    var noticeKey = noticeContainer.data('notice-key');
-    var maybeSend = false;
-    var dataDismiss = '';
     noticeContainer.on('click', function(event) {
       event.preventDefault();
-      let allowClickOnClass = [
+      var that = $(this);
+      var isDelay = 'no';
+      var maybeSend = false;
+      var dataDismiss = '';
+      var noticeKey = that.data('notice-key');
+      const allowClickOnClass = [
         'notice-dismiss',
         'wcv-dismiss-notice-delay',
         'wcv-dismiss-notice',
         'wcv-notice-link'
       ];
-      let targetClassList = event.target.classList;
+      const targetClassList = event.target.classList;
       let allowClick = false;
       allowClickOnClass.forEach(function(className) {
         if (targetClassList.contains(className)) {
@@ -26,7 +27,7 @@
       }
 
       if (event.target.tagName === 'A') {
-        let href = event.target.getAttribute('href');
+        const href = event.target.getAttribute('href');
 
         dataDismiss =
           event.target.getAttribute('data-dismiss') !== null
@@ -57,7 +58,7 @@
           },
           success: function(response) {
             if (response.success) {
-              noticeContainer.hide(500);
+              that.slideUp();
             }
           }
         });

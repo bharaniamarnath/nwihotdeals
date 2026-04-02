@@ -20,6 +20,9 @@ class WCV_Commission {
         add_action( 'deleted_post', array( $this, 'commissions_table_sync' ), 10 );
         add_action( 'wp_trash_post', array( $this, 'commissions_table_sync' ), 10 );
         add_action( 'woocommerce_order_partially_refunded', array( $this, 'partial_reversed_commission' ), 10, 2 );
+        add_filter( 'option_wcvendors_vendor_commission_rate', array( $this, 'convert_decimal_sep_to_dot' ), 10 );
+        add_filter( 'pre_update_option_wcvendors_vendor_commission_rate', array( $this, 'convert_decimal_sep_to_dot' ), 10 );
+        add_filter( 'wcv_get_seting_option_wcvendors_vendor_commission_rate', array( $this, 'convert_decimal_to_wc_sep' ), 10 );
     }
 
     /**
@@ -44,7 +47,7 @@ class WCV_Commission {
 
         foreach ( $product_ids as $product_id ) {
             $vendor_id  = get_post_field( 'post_author', $product_id );
-            $commission = $wpdb->get_results(
+            $commission = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
                 $wpdb->prepare(
                     "SELECT * FROM {$wpdb->prefix}pv_commission WHERE order_id = %d AND product_id = %d AND ( vendor_id = %d OR vendor_id = 1 )",
                     $order_id,
@@ -171,7 +174,10 @@ class WCV_Commission {
 
         // Deduct this amount from the vendor's total due.
         $results = self::sum_total_due_for_order( $order_id );
-        $ids     = escape_array_for_in_operator( $results['ids'], true );
+        if ( empty( $results ) ) {
+            return false;
+        }
+        $ids = escape_array_for_in_operator( $results['ids'], true );
 
         $query  = $wpdb->prepare( "UPDATE {$wpdb->prefix}pv_commission SET `status` = %s WHERE id IN", 'reversed' );
         $query .= " $ids";
@@ -250,7 +256,7 @@ class WCV_Commission {
 
         global $wpdb;
 
-        $results = $wpdb->get_results(
+        $results = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
             $wpdb->prepare(
                 "SELECT `id`, `total_due`, `total_shipping`, `tax`, `vendor_id` FROM `{$wpdb->prefix}pv_commission`
                 WHERE `order_id` = %d
@@ -316,7 +322,7 @@ class WCV_Commission {
             $order_id = implode( ',', $order_id );
         }
 
-        $count = $wpdb->get_var(
+        $count = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
             $wpdb->prepare(
                 "SELECT COUNT(order_id) AS order_count FROM {$wpdb->prefix}pv_commission WHERE order_id IN (%s) AND status <> %s",
                 $order_id,
@@ -343,7 +349,7 @@ class WCV_Commission {
         $vendor_id  = $order['vendor_id'];
         $product_id = $order['product_id'];
 
-        $count = $wpdb->get_var(
+        $count = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
             $wpdb->prepare(
                 "SELECT count(order_id) AS order_count FROM {$wpdb->prefix}pv_commission
                 WHERE order_id = %d AND vendor_id = %d AND product_id = %d AND status = %s",
@@ -441,11 +447,13 @@ class WCV_Commission {
 
         $table = $wpdb->prefix . 'pv_commission';
 
-        // Insert the time and default status 'due'.
+        // Insert the time before applying filter.
         foreach ( $orders as $key => $order ) {
             $orders[ $key ]['time']   = $order['time'];
-            $orders[ $key ]['status'] = ( 0 === $order['total_due'] ) ? 'paid' : 'due';
+            $orders[ $key ]['status'] = ( 0.0 === (float) $order['total_due'] ) ? 'paid' : 'due';
         }
+
+        $orders = apply_filters( 'wcvendors_insert_new_commission', $orders );
 
         foreach ( $orders as $key => $order ) {
 
@@ -460,9 +468,9 @@ class WCV_Commission {
 
             if ( 0 === (int) $count ) {
                 $format = array( '%d', '%d', '%d', '%f', '%f', '%f', '%f', '%s', '%s' );
-                $update = $wpdb->update( $table, $order, $where, $format );
+                $update = $wpdb->update( $table, $order, $where, $format ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
                 if ( ! $update ) {
-                    $wpdb->insert( $table, $order, $format );
+                    $wpdb->insert( $table, $order, $format ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
                 }
             }
         }
@@ -542,7 +550,7 @@ class WCV_Commission {
 
         global $wpdb;
 
-        $result = $wpdb->query(
+        $result = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
             $wpdb->prepare(
                 "UPDATE `{$wpdb->prefix}pv_commission` SET `status` = 'paid' WHERE vendor_id = %d AND order_id = %d AND product_id = %d",
                 $vendor_id,
@@ -569,7 +577,7 @@ class WCV_Commission {
 
         global $wpdb;
 
-        $results = $wpdb->query(
+        $results = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
             $wpdb->prepare(
                 "UPDATE `{$wpdb->prefix}pv_commission` SET `status` = 'reversed' WHERE `order_id` = %d",
                 $order_id
@@ -639,7 +647,7 @@ class WCV_Commission {
 
         global $wpdb;
 
-        $commission_due = $wpdb->get_var(
+        $commission_due = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
             $wpdb->prepare(
                 "SELECT total_due FROM `{$wpdb->prefix}pv_commission`
                 WHERE vendor_id = %d AND product_id  = %d AND order_id = %d",
@@ -665,7 +673,7 @@ class WCV_Commission {
 
         global $wpdb;
 
-        $results = $wpdb->get_results(
+        $results = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
             $wpdb->prepare(
                 "SELECT SUM(total_due + total_shipping + tax) as total
                 FROM `{$wpdb->prefix}pv_commission`
@@ -768,5 +776,31 @@ class WCV_Commission {
         );
 
         return $sum_totals;
+    }
+
+    /**
+     * Convert the decimal separator to a dot
+     *
+     * @since  2.5.2
+     * @access public
+     *
+     * @param string $value The value to check.
+     */
+    public function convert_decimal_sep_to_dot( $value ) {
+        $value = preg_replace( '/[,.]/', '.', $value );
+        return $value;
+    }
+
+    /**
+     * Convert the decimal separator to a WooCommerce separator
+     *
+     * @since  2.5.2
+     * @access public
+     *
+     * @param string $value The value to check.
+     */
+    public function convert_decimal_to_wc_sep( $value ) {
+        $value = preg_replace( '/[,.]/', wc_get_price_decimal_separator(), $value );
+        return $value;
     }
 }

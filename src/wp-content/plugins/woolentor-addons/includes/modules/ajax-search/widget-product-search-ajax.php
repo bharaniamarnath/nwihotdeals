@@ -1,17 +1,18 @@
 <?php
+namespace Woolentor\Modules\AjaxSearch;
 /**
 *  Class Ajax Search Widgets
 */
-class WooLentor_Product_Search_Ajax_Widget extends WP_Widget{
+class Ajax_Search_Widget extends \WP_Widget{
         
     /**
     * Default Constructor
     */
     public function __construct() {
         $widget_options = array(
-            'description' => esc_html__('WooLentor Ajax Product Search Widget', 'woolentor')
+            'description' => esc_html__('ShopLentor Ajax Product Search Widget', 'woolentor')
         );
-        parent::__construct( 'woolentor_widget_psa', __('WooLentor: Product Search Ajax', 'woolentor'), $widget_options );
+        parent::__construct( 'woolentor_widget_psa', __('ShopLentor: Product Search Ajax', 'woolentor'), $widget_options );
     }
 
     /**

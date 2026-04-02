@@ -137,10 +137,11 @@ class Woolentor_Universal_Product_Widget extends Widget_Base {
                 'woolentor_product_id',
                 [
                     'label' => __( 'Select Product', 'woolentor' ),
-                    'type' => Controls_Manager::SELECT2,
+                    'type' => 'woolentor-select',
                     'label_block' => true,
                     'multiple' => true,
-                    'options' => woolentor_post_name( 'product' ),
+                    'ajax_search' => true,
+                    'post_type' => 'product',
                     'condition' => [
                         'woolentor_product_grid_product_filter' => 'show_byid',
                     ]
@@ -1084,10 +1085,12 @@ class Woolentor_Universal_Product_Widget extends Widget_Base {
                 'product_category_margin',
                 [
                     'label' => __( 'Margin', 'woolentor' ),
+                    'description'=>__( 'If select content style two then only work bottom and right margin','woolentor' ),
                     'type' => Controls_Manager::DIMENSIONS,
                     'size_units' => [ 'px', '%', 'em' ],
                     'selectors' => [
-                        '{{WRAPPER}} .ht-products .ht-product .ht-product-inner .ht-product-content .ht-product-content-inner .ht-product-categories' => 'margin: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};',
+                        '{{WRAPPER}} .ht-products .ht-product .ht-product-inner .ht-product-content .ht-product-content-inner .ht-product-categories:not(.ht-product-brand)' => 'margin: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};',
+                        '{{WRAPPER}} .ht-products .ht-product.ht-product-category-right-bottom .ht-product-inner .ht-product-content .ht-product-content-inner .ht-product-categories:not(.ht-product-brand)'=>'bottom: {{BOTTOM}}{{UNIT}}; right: {{RIGHT}}{{UNIT}}; margin: 0 !important;',
                     ],
                 ]
             );
@@ -1361,6 +1364,7 @@ class Woolentor_Universal_Product_Widget extends Widget_Base {
                             ],
                             'selectors' => [
                                 '{{WRAPPER}} .ht-products .ht-product .ht-product-inner .ht-product-action ul li a i' => 'font-size: {{SIZE}}{{UNIT}};',
+                                '{{WRAPPER}} .ht-products .ht-product .ht-product-inner .ht-product-action ul li a.wishsuite-button svg' => 'width: {{SIZE}}{{UNIT}}; height: {{SIZE}}{{UNIT}};',
                                 '{{WRAPPER}} .woolentor-compare.compare::before,{{WRAPPER}} .ht-product-action ul li.woolentor-cart a::before' => 'font-size: {{SIZE}}{{UNIT}};',
                             ],
                         ]
@@ -2432,12 +2436,14 @@ class Woolentor_Universal_Product_Widget extends Widget_Base {
                                                 <?php if( $settings['show_action_button'] == 'yes' ){ if( $settings['action_button_position'] != 'contentbottom' ): ?>
                                                     <div class="ht-product-action">
                                                         <ul <?php echo $this->get_render_attribute_string( 'action_btn_attr' ); ?>>
-                                                            <li>
-                                                                <a href="#" class="woolentorquickview" data-quick-id="<?php the_ID();?>" <?php echo wc_implode_html_attributes( ['aria-label'=>$product->get_title()] ); ?>>
-                                                                    <i class="sli sli-magnifier"></i>
-                                                                    <span class="ht-product-action-tooltip"><?php esc_html_e('Quick View','woolentor'); ?></span>
-                                                                </a>
-                                                            </li>
+                                                            <?php if( true === woolentor_has_quickview() ): ?>
+                                                                <li>
+                                                                    <a href="#" class="woolentorquickview" data-product_id="<?php the_ID();?>" <?php echo wc_implode_html_attributes( ['aria-label'=>$product->get_title()] ); ?>>
+                                                                        <i class="sli sli-magnifier"></i>
+                                                                        <span class="ht-product-action-tooltip"><?php esc_html_e('Quick View','woolentor'); ?></span>
+                                                                    </a>
+                                                                </li>
+                                                            <?php endif; ?>
                                                             <?php
                                                                 if( true === woolentor_has_wishlist_plugin() ){
                                                                     echo '<li>'.woolentor_add_to_wishlist_button('<i class="sli sli-heart"></i>','<i class="sli sli-heart"></i>', 'yes').'</li>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
@@ -2477,12 +2483,14 @@ class Woolentor_Universal_Product_Widget extends Widget_Base {
                                                     <?php if( $settings['show_action_button'] == 'yes' ){ if( $settings['action_button_position'] == 'contentbottom' ): ?>
                                                         <div class="ht-product-action">
                                                             <ul <?php echo $this->get_render_attribute_string( 'action_btn_attr' ); ?>>
-                                                                <li>
-                                                                    <a href="#" class="woolentorquickview" data-quick-id="<?php the_ID();?>" <?php echo wc_implode_html_attributes( ['aria-label'=>$product->get_title()] ); ?>>
-                                                                        <i class="sli sli-magnifier"></i>
-                                                                        <span class="ht-product-action-tooltip"><?php esc_html_e('Quick View','woolentor'); ?></span>
-                                                                    </a>
-                                                                </li>
+                                                                <?php if( true === woolentor_has_quickview() ): ?>
+                                                                    <li>
+                                                                        <a href="#" class="woolentorquickview" data-product_id="<?php the_ID();?>" <?php echo wc_implode_html_attributes( ['aria-label'=>$product->get_title()] ); ?>>
+                                                                            <i class="sli sli-magnifier"></i>
+                                                                            <span class="ht-product-action-tooltip"><?php esc_html_e('Quick View','woolentor'); ?></span>
+                                                                        </a>
+                                                                    </li>
+                                                                <?php endif;?>
                                                                 <?php
                                                                     if( true === woolentor_has_wishlist_plugin() ){
                                                                         echo '<li>'.woolentor_add_to_wishlist_button('<i class="sli sli-heart"></i>','<i class="sli sli-heart"></i>', 'yes').'</li>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
@@ -2627,12 +2635,14 @@ class Woolentor_Universal_Product_Widget extends Widget_Base {
                                         <?php if( $settings['show_action_button'] == 'yes' ){ if( $settings['action_button_position'] != 'contentbottom' ): ?>
                                             <div class="ht-product-action">
                                                 <ul <?php echo $this->get_render_attribute_string( 'action_btn_attr' ); ?>>
-                                                    <li>
-                                                        <a href="#" class="woolentorquickview" data-quick-id="<?php the_ID();?>" <?php echo wc_implode_html_attributes( ['aria-label'=>$product->get_title()] ); ?>>
-                                                            <i class="sli sli-magnifier"></i>
-                                                            <span class="ht-product-action-tooltip"><?php esc_html_e('Quick View','woolentor'); ?></span>
-                                                        </a>
-                                                    </li>
+                                                    <?php if( true === woolentor_has_quickview() ): ?>
+                                                        <li>
+                                                            <a href="#" class="woolentorquickview" data-product_id="<?php the_ID();?>" <?php echo wc_implode_html_attributes( ['aria-label'=>$product->get_title()] ); ?>>
+                                                                <i class="sli sli-magnifier"></i>
+                                                                <span class="ht-product-action-tooltip"><?php esc_html_e('Quick View','woolentor'); ?></span>
+                                                            </a>
+                                                        </li>
+                                                    <?php endif;?>
                                                     <?php
                                                         if( true === woolentor_has_wishlist_plugin() ){
                                                             echo '<li>'.woolentor_add_to_wishlist_button('<i class="sli sli-heart"></i>','<i class="sli sli-heart"></i>', 'yes').'</li>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
@@ -2672,12 +2682,14 @@ class Woolentor_Universal_Product_Widget extends Widget_Base {
                                             <?php if( $settings['show_action_button'] == 'yes' ){ if( $settings['action_button_position'] == 'contentbottom' ): ?>
                                                 <div class="ht-product-action">
                                                     <ul <?php echo $this->get_render_attribute_string( 'action_btn_attr' ); ?>>
-                                                        <li>
-                                                            <a href="#" class="woolentorquickview" data-quick-id="<?php the_ID();?>" <?php echo wc_implode_html_attributes( ['aria-label'=>$product->get_title()] ); ?>>
-                                                                <i class="sli sli-magnifier"></i>
-                                                                <span class="ht-product-action-tooltip"><?php esc_html_e('Quick View','woolentor'); ?></span>
-                                                            </a>
-                                                        </li>
+                                                        <?php if( true === woolentor_has_quickview() ): ?>
+                                                            <li>
+                                                                <a href="#" class="woolentorquickview" data-product_id="<?php the_ID();?>" <?php echo wc_implode_html_attributes( ['aria-label'=>$product->get_title()] ); ?>>
+                                                                    <i class="sli sli-magnifier"></i>
+                                                                    <span class="ht-product-action-tooltip"><?php esc_html_e('Quick View','woolentor'); ?></span>
+                                                                </a>
+                                                            </li>
+                                                        <?php endif; ?>
                                                         <?php
                                                             if( true === woolentor_has_wishlist_plugin() ){
                                                                 echo '<li>'.woolentor_add_to_wishlist_button('<i class="sli sli-heart"></i>','<i class="sli sli-heart"></i>', 'yes').'</li>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped

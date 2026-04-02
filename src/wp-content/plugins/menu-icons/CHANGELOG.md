@@ -1,3 +1,28 @@
+##### [Version 0.13.21](https://github.com/codeinwp/wp-menu-icons/compare/v0.13.20...v0.13.21) (2026-02-03)
+
+- Enhanced security
+
+##### [Version 0.13.20](https://github.com/codeinwp/wp-menu-icons/compare/v0.13.19...v0.13.20) (2025-12-15)
+
+- Fixed compatibility with PHP 8.1+ versions
+- Updated dependencies
+
+##### [Version 0.13.19](https://github.com/codeinwp/wp-menu-icons/compare/v0.13.18...v0.13.19) (2025-09-05)
+
+- Updated dependencies
+
+##### [Version 0.13.18](https://github.com/codeinwp/wp-menu-icons/compare/v0.13.17...v0.13.18) (2025-05-23)
+
+- Updated dependencies
+
+##### [Version 0.13.17](https://github.com/codeinwp/wp-menu-icons/compare/v0.13.16...v0.13.17) (2025-04-17)
+
+- Updated dependencies
+
+##### [Version 0.13.16](https://github.com/codeinwp/wp-menu-icons/compare/v0.13.15...v0.13.16) (2024-11-07)
+
+- Updated dependencies
+
 ##### [Version 0.13.15](https://github.com/codeinwp/wp-menu-icons/compare/v0.13.14...v0.13.15) (2024-07-10)
 
 - Removed recommendations of unsupported plugins

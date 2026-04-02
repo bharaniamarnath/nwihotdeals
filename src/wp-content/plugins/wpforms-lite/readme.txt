@@ -2,9 +2,9 @@
 Contributors: wpforms, jaredatch, smub, slaFFik
 Tags: contact form, contact form plugin, forms, form builder, custom form
 Requires at least: 5.5
-Tested up to: 6.6
-Stable tag: 1.9.0.1
-Requires PHP: 7.0
+Tested up to: 6.9
+Stable tag: 1.10.0.1
+Requires PHP: 7.2
 License: GNU General Public License v2.0 or later
 
 The best WordPress contact form plugin. Drag & Drop form builder to create beautiful contact forms, payment forms, & other custom forms. 7000+ integrations including Stripe and more.
@@ -33,7 +33,7 @@ Create custom contact forms in minutes with our easy-to-use [drag and drop onlin
 
 = Pre-built Form Templates =
 
-WPForms comes with [1800+ pre-built form templates](https://wpforms.com/templates/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin).
+WPForms comes with [2100+ pre-built form templates](https://wpforms.com/templates/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin).
 
 Whether you're looking to create a simple contact form, marketing form, request a quote form, donation form, payment order form, registration form, Stripe payment form, or a subscription form, we have a form template already prepared and ready to use.
 
@@ -76,13 +76,13 @@ We're proud to be a Stripe Verified Partner. This partnership allows us to build
 
 Using the [WPForms Calculations addon](https://wpforms.com/features/calculations-addon/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin), you can build custom formulas and display results on the frontend.
 
-Create simple arithmetic calculations or build complex conditional calculations with rounded values, averages, time ranges, and more! Itâ€™s the best calculator plugin for WordPress.
+Create simple arithmetic calculations or build complex conditional calculations with rounded values, averages, time ranges, and more! It's the best calculator plugin for WordPress.
 
 = Forms Optimized for Conversions =
 
 With our Form Pages addon, you can create distraction-free custom form landing pages to increase conversions.
 
-To improve form completion rates, we created Conversational Forms&reg; which helps you make your feedback forms feel more human by adding an interactive layout. ([See Conversational Forms Demo](https://wpforms.com/features/conversational-forms-addon/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin)).
+To improve form completion rates, we created Conversational Forms which helps you make your feedback forms feel more human by adding an interactive layout. ([See Conversational Forms Demo](https://wpforms.com/features/conversational-forms-addon/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin)).
 
 = Easy to Customize and Extend =
 
@@ -99,9 +99,11 @@ We also know that our developer friends may want more control, so we added tons 
 * [Form templates](https://wpforms.com/templates/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin) pre-built and ready to import.
 * [Form styling](https://wpforms.com/docs/styling-your-forms/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin) for fields, labels, and buttons.
 * [Spam protection](https://wpforms.com/features/spam-protection/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin) built in, plus integrations with hCaptcha, Google reCAPTCHA, and Cloudflare Turnstile.
+* [AI Forms](https://wpforms.com/features/wpforms-ai/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin) to automatically create and refine forms through natural conversation.
 * [Instant form notifications](https://wpforms.com/features/instant-notifications/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin) via email.
 * [Custom form confirmations](https://wpforms.com/features/form-confirmation/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin) with success messages or thank you pages.
 * [Smart phone field](https://wpforms.com/docs/how-to-choose-the-right-form-field-for-your-forms/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin#phone) that adapts to your visitor's location.
+* [AI Choices](https://wpforms.com/features/wpforms-ai/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin) to automatically populate Multiple Choice, Checkboxes, and Dropdown field options.
 * [Coupons](https://wpforms.com/features/coupons-addon/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin) for free shipping and sale discounts.
 * [Calculator forms](https://wpforms.com/features/calculations-addon/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin) for payment, shipping, billing, and more.
 * [File upload fields](https://wpforms.com/features/file-uploads/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin) for user submissions.
@@ -122,6 +124,7 @@ We also know that our developer friends may want more control, so we added tons 
 * [Webhooks](https://wpforms.com/features/webhooks-addon/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin) to send data without third party connectors.
 * [User Journey reports](https://wpforms.com/features/user-journey-addon/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin) so you know which content is driving form conversions.
 * [Save and Resume](https://wpforms.com/features/save-and-resume-addon/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin) to let visitors save and come back later.
+* [Entry Automation](https://wpforms.com/features/entry-automation-addon/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin) to export and delete form entries on a daily, weekly, or monthly basis.
 
 = Integrations =
 
@@ -136,13 +139,25 @@ We also know that our developer friends may want more control, so we added tons 
 * [Campaign Monitor](https://wpforms.com/features/campaign-monitor-addon/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin)
 * [GetResponse](https://wpforms.com/features/getresponse-addon/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin)
 * [Constant Contact](https://wpforms.com/features/constant-contact/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin)
+* [Airtable](https://wpforms.com/features/airtable-addon/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin)
+* [Notion](https://wpforms.com/features/notion-addon/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin)
 * [Drip](https://wpforms.com/features/drip-addon/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin)
 * [ActiveCampaign](https://wpforms.com/features/activecampaign-addon/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin)
 * [HubSpot](https://wpforms.com/features/hubspot-addon/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin)
 * [Brevo](https://wpforms.com/features/brevo-addon/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin)
 * [MailerLite](https://wpforms.com/features/mailerlite-addon/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin)
+* [MailPoet](https://wpforms.com/features/mailpoet-addon/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin)
 * [ConvertKit](https://wpforms.com/features/convertkit-addon/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin)
 * [Salesforce](https://wpforms.com/features/salesforce-addon/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin)
+* [Slack](https://wpforms.com/features/slack-addon/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin)
+* [Dropbox](https://wpforms.com/features/dropbox-addon/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin)
+* [Google Calendar](https://wpforms.com/features/google-calendar-addon/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin)
+* [Google Drive](https://wpforms.com/features/google-drive-addon/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin)
+* [Twilio](https://wpforms.com/features/twilio-addon/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin)
+* [Pipedrive](https://wpforms.com/features/pipedrive-addon/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin)
+* [Make](https://wpforms.com/features/make-addon/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin)
+* [Quiz](https://wpforms.com/features/quiz-addon/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin)
+* [Zoho CRM](https://wpforms.com/features/zoho-crm-addon//?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin)
 
 You can see why WPForms is the best WordPress contact form plugin on the market! Want to unlock these features? [Upgrade to our Pro version](https://wpforms.com/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin).
 
@@ -170,13 +185,14 @@ WPForms&reg; is a registered trademark of WPForms LLC. When writing about the co
 
 1. WPForms Drag & Drop Form Builder
 2. Adding New Fields
-3. Form Templates
-4. WPForms Block With Style Options
-5. Payments Overview
-6. Single Payment
-7. Form Preview
-8. Form Pages with Multiple Styles
-9. Conversational Form
+3. Generate choices using AI
+4. Form Templates
+5. WPForms Block With Style Options
+6. Payments Overview
+7. Single Payment
+8. Form Preview
+9. Form Pages with Multiple Styles
+10. Conversational Form
 
 == Frequently Asked Questions ==
 
@@ -209,7 +225,7 @@ WPForms drag & drop form builder combined with our addons is the most powerful W
 * Volunteer Registration Contact Form
 * Offline Contact Form
 
-To see a full list, visit our [Form Template Gallery](https://wpforms.com/templates/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin), which has over 1800+ pre-made contact form templates.
+To see a full list, visit our [Form Template Gallery](https://wpforms.com/templates/?utm_source=wprepo&utm_medium=link&utm_campaign=liteplugin), which has over 2100+ pre-made contact form templates.
 
 = Which Form Fields Does WPForms offer? =
 
@@ -284,6 +300,7 @@ Here is a list of our popular marketing integrations:
 * Salesforce CRM
 * Brevo (ex Sendinblue)
 * MailerLite
+* MailPoet
 
 Using our Zapier integration, you can easily connect WPForms with over 7,000+ marketing apps including:
 
@@ -374,7 +391,323 @@ Syed Balkhi
 
 == Changelog ==
 
-= 1.9.0.1 =
+= 1.10.0.1 =
+- Added: Users can connect their PayPal Commerce accounts and receive payments via their payment forms.
+- Changed: Refactored the Form Builder JavaScript into modular architecture for improved maintainability and performance.
+- Changed: Refactored and optimized drag fields JavaScript for more consistent field reordering and positioning.
+- Changed: The Lite Connect modals and settings description now include a notice that entry backups expire after 1 year.
+- Fixed: The "Preview" button on email templates didn't wrap text on the Settings > Email admin page.
+- Fixed: Compatibility with Sugar Calendar on the Tools > Export page.
+- Fixed: A conflict with Monolog was causing fatal errors on some sites.
+- Fixed: PHP warning for templates with an Internal Information Field.
+- Fixed: Reply-To email header was silently dropped when using the smart tag widget due to non-breaking space characters.
+- Fixed: Console errors could occur when the Icon Choices library was missing or corrupted.
+- Fixed: Missing Dependencies errors during new form creation.
+- Fixed: The icon library error pop-up was incorrectly shown after a successful icon library installation when interacting with the form builder before the page reloaded.
+- Fixed: Admin notice for Lite Connect backup failures was not shown on the WP Dashboard and was missing a direct link to Support for resolving scheduling issues.
+
+= 1.9.9.4 =
+- Fixed: Gutenberg education notice incorrectly showing in Classic Editor when Classic Editor plugin is active.
+- Fixed: GDPR agreement field was truncated in the Form Builder.
+
+= 1.9.9.3 =
+- Fixed: The Cloudflare Turnstile captcha rendered twice if a CF7 form was also added on the same page.
+
+= 1.9.9.2 =
+- Added: WordPress Abilities API integration for AI and automation-ready access to WPForms.
+- Added: Ability to generate Quiz-enabled forms using the AI Form generator.
+- Added: Support for multiple fields selection: you can now drag, duplicate, or delete multiple fields at once.
+- Added: Keyboard shortcuts for field duplication (D), field removal (Delete), copy (Ctrl/Cmd + C), and paste (Ctrl/Cmd + V).
+- Added: Undo/redo command manager with modular integrations for Form Builder inputs.
+- Added: Divi 5 compatibility and a new block for the Divi page builder.
+- Changed: Put the plugin on a diet – performed a cleanup, reducing plugin size.
+- Changed: Improved compatibility with the MotoPress Content Editor plugin.
+- Changed: Updated Chart.js library to v4.5.1.
+- Fixed: Selected form type was not retained when refreshing the Forms Overview page.
+- Fixed: Deprecation error with PHP 8.4 that occurred during WPForms installation.
+- Fixed: Form creation via Form AI for users without manage_options capability.
+- Fixed: Deprecation warning being logged in the browser console on the Dashboard admin page.
+- Fixed: Fixed PHP 8.4 deprecated error in Stripe integration related to nullable parameter type declaration.
+- Fixed: From Email/Name fields appeared blank for new notifications when WP Mail SMTP force settings were enabled.
+- Fixed: The collapsible block height in the builder to be consistent with other fields.
+- Fixed: Disabled field option toggle remained interactive.
+
+= 1.9.8.7 =
+- Fixed: A fatal error occurred on the admin dashboard with some third-party plugins.
+- Fixed: Prevented loading of Divi assets on pages not containing a form.
+- Fixed: Compatibility with the LeadConnector plugin.
+- Fixed: Integration icons were misaligned on the Form Builder page.
+
+= 1.9.8.4 =
+- Added: Ability to hide choice images notifications.
+- Added: Ability to set a user-defined choice for the Multiple Choice field.
+- Changed: Updated DOMPurify library to 3.2.7.
+- Changed: Updated Font Awesome library to 7.0.1.
+- Changed: Validation of Custom Meta Keys on the Form Builder > Payments > Stripe screen.
+- Fixed: Form Builder preview container height in empty state.
+- Fixed: A conflict occurred when a non-Google captcha was used in the form and the Google reCAPTCHA API was loaded on the same page.
+- Fixed: A fatal error in `wpforms_is_admin_page()` that occurred when the page request parameter was passed as an array instead of a string.
+- Fixed: Console error when installing WPForms via a Block in the Block Editor.
+
+= 1.9.8.2 =
+- Fixed: Form Builder preview container height with empty state.
+
+= 1.9.8.1 =
+- Added: Ability to disconnect Stripe accounts through the Settings > Payments admin page.
+- Added: Ability to set how many times a Stripe recurring payment will be repeated.
+- Added: Back To Previous Page option for Confirmation Page Redirect.
+- Changed: Improved accessibility for the Modern Dropdown field by adding ARIA attributes to support VoiceOver navigation.
+- Changed: Notification email fields in the Form Builder now only display email-compatible Smart Tags.
+- Fixed: PHP warnings might be generated for new forms created from a template by non-admin users.
+- Fixed: Disabled fields (read-only) didn't look disabled.
+- Fixed: Smart Tag fields in the sidebar had incorrect height.
+- Fixed: The last step of the WPForms Challenge wasn't shown up for users in some cases.
+- Fixed: Header Menu Links position has been adjusted to be on the same level on every screen.
+- Fixed: Duplicated Square field button existed in the Form Builder.
+- Fixed: Form authors with no capabilities to install addons did not get information about missing privileges.
+- Fixed: HTMLPurifier threw a deprecated API call notice.
+- Fixed: Users with no sufficient access permissions were able to display a broken Themes settings panel.
+- Fixed: Custom CSS with quotes in selectors now displays correctly instead of showing broken HTML entities.
+- Fixed: Pinned AI Chat layout in the Form Builder.
+- Fixed: Log titles having apostrophes in them were not displayed correctly in the Log Viewer.
+- Fixed: There might be errors when processing Stripe payments with customer metadata containing empty keys.
+
+= 1.9.7.2 =
+- Fixed: JS errors might affect the form submission on some environments with installed plugins for caching.
+
+= 1.9.7.1 =
+- Added: Ability to apply Styles and Themes directly within the WPForms Form Builder.
+- Added: Ability to copy whole Smart Tags input content if it contains smart tags.
+- Added: Number field validation messages control on the Settings > Validation page.
+- Added: The Choices Limit option for the Payment Checkbox Items field.
+- Added: Warning message in case corrupted form data is detected in the form builder.
+- Changed: Optimized the calculation process of the total amount on payment forms.
+- Changed: Improved compatibility with PHP 8.4.
+- Changed: Improved error message in case 403 error occurred while saving a form.
+- Changed: Improved compatibility with the Paid Memberships Pro plugin.
+- Fixed: The spacing between the template badge and the form name was too small.
+- Fixed: Square Credit Card field error was still displayed after entering valid details.
+- Fixed: Various RTL problems on the form builder screen.
+
+= 1.9.6.2 =
+- Fixed: "Please enable JavaScript" message was displayed over a form even when JavaScript was enabled.
+
+= 1.9.6.1 =
+- Added: Smart Tags support in the Default Value setting for Name field subfields.
+- Fixed: WPForms updates did not work consistently with the WP Umbrella plugin.
+- Fixed: The layout of the Order Summary table was broken on Windows operating systems.
+- Fixed: The layout of the Stripe custom fields mapping table was broken in the form builder.
+
+= 1.9.6 =
+- Added: Form Themes for Elementor.
+- Added: Customer phone, Payment, and Customer metadata can now be configured on the Form Builder > Payments > Stripe screen.
+- Changed: Improved styles on Tools > Scheduled Actions page with reset search filter.
+- Changed: Improved Form Builder loading.
+- Changed: Required select fields have default placeholder text to prevent the submission of default values.
+- Changed: Improved message about missing PHP extensions.
+- Changed: Updated DOMPurify library to 3.2.6.
+- Fixed: Captcha verification was skipped for payment forms.
+- Fixed: Email notification was malformed when a form had a Total field with the "Order Summary" enabled.
+- Fixed: The marketing provider's name was not specified in the warning popup when a field with conditional logic was removed.
+- Fixed: An error occurred when installing a plugin through the Gutenberg block.
+- Fixed: Addon fields were not rendered on the front-end on multisite if addons were not activated site-wide.
+- Fixed: Missing popup about unsaved changes when closing the form from the Marketing tab.
+- Fixed: Compatibility with Elementor editor.
+- Fixed: The "Plugin is in the Latest Version" error occurred when updating several addons using bulk update on the Plugins page.
+- Fixed: There was no popup about unsaved changes displayed after typing into the MCE editor.
+- Fixed: Layout issues of the Square credit card field.
+- Fixed: JavaScript error occurred when a form was added in the Elementor popup.
+- Fixed: Fields were added to the form in the wrong order under some conditions.
+
+= 1.9.5.2 =
+- Fixed: Issue sending form notifications using email fields that had ID=0.
+
+= 1.9.5.1 =
+- Fixed: AJAX request for Stripe payments was sent twice, which might lead to missed entries and payment records.
+- Fixed: `{field_id="#"}` smart tag didn't work for CC field in email notifications.
+- Fixed: Email notification was misformatted when the form had a Total field with the "Order Summary" enabled.
+
+= 1.9.5 =
+- IMPORTANT: Support for PHP 7.1 has been discontinued. If you are running PHP 7.1, you MUST upgrade PHP before installing WPForms 1.9.5. Failure to do that will disable WPForms core functionality.
+- Added: Users can connect their Square accounts and receive payments via their payment forms.
+- Added: New design for Smart Tags.
+- Added: The ability to activate and deactivate email notifications through a status button in the form builder.
+- Changed: Enhancing the prevention of duplicate form submissions.
+- Changed: Improved the error messaging when creating new provider connections in the form builder.
+- Changed: Improved the "From Email" setting validation in the Notifications screen.
+- Changed: AI Chat Modal can be docked to the right of the builder.
+- Changed: The order of the admin bar menu items.
+- Changed: Improved compatibility with PHP 8.1.
+- Changed: Improved UX for Dropdown and Dropdown Items fields.
+- Fixed: Hidden by conditional logic items in the Order Summary table were shown in the Editors.
+- Fixed: Stripe settings were active when the credit card field was removed from the form.
+- Fixed: The notice for the minimum and maximum valid values of the Number Slider field is now correct.
+- Fixed: WPForms Challenge RTL issues.
+- Fixed: Incorrect wpforms_htaccess_file transient name generation.
+- Fixed: Console error when users tried to embed a form into an existing page on the last step of the WPForms Challenge.
+- Fixed: The submit button stays disabled after Stripe payment fails in some cases.
+- Fixed: The Dropdown and Dropdown Items fields displayed placeholders instead of default values in the Form Builder.
+- Fixed: Wrong paddings in the Form Builder sidebar on Windows in the RTL mode.
+- Fixed: Improved the From Email notification setting. The Email field is detected now by a smart tag.
+- Fixed: Improved notification template for the {entry_geolocation} smart tag.
+
+= 1.9.4.2 =
+- Fixed: Fatal error when trying to delete the plugin.
+- Fixed: Character encoding issues in Email notifications when viewed on some Apple devices.
+
+= 1.9.4.1 =
+- Added: Minimum and maximum value validation for the Numbers field.
+- Added: Implemented password protection and user access restrictions for uploaded files.
+- Added: Automatic preview page reload was added after saving.
+- Changed: Improved Gutenberg block UI by hiding settings when no form is selected.
+- Changed: Updated stripe/stripe-php library to 16.5.0.
+- Changed: Enhanced Tools > Scheduled Actions visibility for better compatibility with Action Scheduler, WooCommerce, and WP Rocket plugins.
+- Changed: Improved Stripe payments customer address handling.
+- Changed: Optimized number slider calculations for better decimal precision.
+- Changed: Improved Numbers and Number Slider fields settings interface in the form builder.
+- Fixed: Stripe Credit Card field payment element console warnings.
+- Fixed: Resolved form submission debug log warnings.
+- Fixed: URL referer smart tag functionality for external websites.
+- Fixed: Addressed GDPR enhancements setting flashings on refresh.
+- Fixed: Resolved Stripe payments processing for Indian accounts.
+- Fixed: Corrected Payments Summary chart tooltip display.
+- Fixed: Improved decimal precision in number slider field calculations.
+- Fixed: Enhanced WPForms admin pages performance.
+- Fixed: Backslash handling in form data after saving.
+- Fixed: Prevented duplicate entry submissions with reCAPTCHA v3.
+- Fixed: Restored missing Order Summary item names for hidden label fields.
+- Fixed: Improved Order Summary performance with conditional Multiple Items fields.
+- Fixed: Dynamic Choice fields button behavior.
+- Fixed: Display of zero-price Payment Checkbox items.
+- Fixed: Stripe Credit Card field styling in Divi builder.
+- Fixed: Fatal error with a custom country address scheme.
+
+= 1.9.3.2 =
+- Fixed: GDPR enhancements sub-setting briefly flashed on the WPForms > Settings admin page after refresh.
+
+= 1.9.3.1 =
+- IMPORTANT: Support for PHP 7.0 has been discontinued. If you are running PHP 7.0, you MUST upgrade PHP before installing WPForms 1.9.3. Failure to do that will disable WPForms core functionality.
+- Added: Ability to open the Form Builder with a specific section via URL parameter.
+- Added: Support for Block API versions 2 and 3.
+- Added: Support for the Constant Contact API v3.
+- Added: Quick page navigation on the Forms Overview page.
+- Added: Direct access to Tools sections from WPForms top admin menu.
+- Changed: Updated stripe/stripe-php library to 16.3.0.
+- Changed: Updated DOMPurify library to 3.2.3.
+- Changed: Optimized Order Summary table display on mobile devices.
+- Changed: Improved date formatting consistency in payments table.
+- Changed: Removed dynamic missing translation fix to improve performance.
+- Fixed: Tooltip text overlap in Choices.js dropdowns with long tags.
+- Fixed: Default payment choice label visibility in order summary table.
+- Fixed: Hidden single item field visibility in Order Summary table.
+- Fixed: Unnecessary CSS variables output on pages without forms.
+- Fixed: Toggle icon status glitch on the payments settings section.
+- Fixed: Submit button text handling with empty values.
+- Fixed: Non-Latin characters have been stripped from the URL when used in {page_url} and {url_referer} smart tags.
+- Fixed: Block Editor field compatibility.
+- Fixed: Warning appeared in the debug.log when non-string data were erroneously sent to translation.
+- Fixed: Custom validation message display for sub-fields.
+- Fixed: Stripe Credit Card field in Elementor popups.
+- Fixed: Submit button default label handling.
+- Fixed: An error was happening when removing “Copy / Paste Style Settings” in Elementor and Block editor.
+- Fixed: The “Copy / Paste Style Settings” field default value was empty when adding an Elementor WPForms block.
+- Fixed: Error handler improvements.
+- Fixed: Some emails were not added to Constant Contact integration.
+- Fixed: The WPForms Challenge steps were shown in the AI Form Generator panel.
+- Fixed: PHP 7.1 and 7.2 compatibility.
+
+= 1.9.2.3 =
+- Changed: Creating a custom form theme is now available only to Administrators.
+- Fixed: Translated form action notices had an "s" letter appended to the form/template translated name.
+- Fixed: The Minimum time to submit setting consistently blocked form submissions on sites created in WordPress Studio.
+- Fixed: The '_load_textdomain_just_in_time was called incorrectly' error with child themes.
+- Fixed: In rare cases, a fatal error could happen on plugin activation.
+
+= 1.9.2.2 =
+- Fixed: _load_textdomain_just_in_time notice with WordPress 6.7.
+- Fixed: Some translations were empty with WordPress 6.5+.
+
+= 1.9.2.1 =
+- Added: The Settings section in the WPForms admin bar menu.
+- Added: Update Stripe payments status after canceling a refund in the Stripe dashboard.
+- Added: Open the URL in the new tab for Confirmations.
+- Added: New `$row_id` parameter to the `wpforms_pre_update_{$type}` and `wpforms_post_update_{$type}` actions.
+- Added: AI chat warning messages if prohibited code has been removed.
+- Changed: Updated jquery.validate library to 1.21.0.
+- Changed: Updated stripe/stripe-php library to 16.1.0.
+- Changed: Updated DOMPurify library to 3.1.7.
+- Changed: Updated woocommerce/action-scheduler library to 3.8.2.
+- Changed: Updated Chart.js library to v4.4.4.
+- Changed: Smart tags are no longer processed in WordPress builders, such as Gutenberg, Elementor, Divi Builder, etc.
+- Fixed: There was a potential infinite recursion in error handling.
+- Fixed: Improved performance on the Templates page in the Form Builder.
+- Fixed: Field labels were printed in the Order Summary table when the Hide Label option was enabled.
+- Fixed: In some cases, adding a new account in Form Builder did not load the account data correctly.
+- Fixed: Improved translation handling for addon names and descriptions.
+- Fixed: Order Summary performance issue on large forms containing numerous payment conditional logic fields.
+- Fixed: Mapped First/Last Name sub-fields were replaced by another after the initial field was deleted.
+- Fixed: An extra field was displayed when WPForms were embedded using a shortcode in the Footer.
+- Fixed: The non-Latin characters were not supported for the AI Choices prompt.
+
+= 1.9.1.6 =
+- Fixed: The Dropdown field placeholder was disabled on the Divi Builder preview screen.
+- Fixed: When sending a form with an incorrect nonce field, no error was displayed.
+- Fixed: An extra field was displayed when a form was embedded using a shortcode in the Footer.
+
+= 1.9.1.5 =
+- Fixed: PHP warnings appeared with WordPress widgets.
+
+= 1.9.1.4 =
+- Fixed: Multiple sending of weekly summary emails.
+
+= 1.9.1.3 =
+- Fixed: HTML tags didn't work in an agreement text of the GDPR field when a field's label was hidden.
+- Fixed: HTML tags in choices of the Checkboxes, Multiple Choice, and Dropdown fields were escaped and didn't work as expected.
+
+= 1.9.1.2 =
+- Fixed: There was a conflict with the WooCommerce Subscriptions plugin.
+
+= 1.9.1.1 =
+- Added: State-of-the-art generative AI can help to build forms even faster.
+- Added: New supported currencies.
+- Added: New `wpforms_html_field_name` filter that allows modifying field labels in email notifications.
+- Changed: Improved the UI for multiple dropdown elements in various places of the admin area.
+- Changed: Updated Stripe Subscription to use the plan name as the description.
+- Changed: Notice in the WPForms > Settings > Payments admin page when a selected currency is not supported by Stripe.
+- Changed: WPForms admin notices are now sorted by type.
+- Changed: Improved the Modern Dropdown field UI across the Block and Elementor editors.
+- Changed: Updated DOMPurify library to 3.1.6.
+- Changed: Updated `stripe/stripe-php` library to 15.8.0.
+- Changed: Improved RTL support of plugin admin pages.
+- Changed: Improved compatibility with Full Site Editor and Gutenberg plugin.
+- Changed: Improved performance on admin pages.
+- Changed: Form Builder: Alt+S shortcut toggles the sidebar on Windows and Linux. Ctrl+F shortcut has been improved to always open search field.
+- Fixed: Resolved W3C validation error for the Order Summary table.
+- Fixed: Fixed RTL display issues for submit spinner and payment fields with quantity enabled.
+- Fixed: Resolved pagination button issues for WordPress versions 6.6 and higher.
+- Fixed: Incorrect price was displayed in the Order Summary table for some currencies when the Single Item field with 'user defined' type was used.
+- Fixed: Improved mobile responsiveness of the price column in the Order Summary table.
+- Fixed: "The cron event list could not be saved" error could appear in the debug.log file in certain cases.
+- Fixed: WPForms script was not defined in the Elementor popup.
+- Fixed: Compatibility with the Jetpack Boost plugin.
+- Fixed: PHP notice generated on the Single Payment screen in some cases.
+- Fixed: Search on WPForms –> Tools –> Scheduled Actions page redirected users to the Import Screen.
+- Fixed: The `wpforms_weekly_entries_count_cron` task was reporting an error in the debug log.
+- Fixed: Resolved W3C errors and warnings reported for the Standard fields.
+- Fixed: The browser tab could crash if the WPForms block was used with patterns.
+- Fixed: The Order Summary text was not readable in some form themes when the `{order_summary}` smart tag was used in the Confirmation message.
+- Fixed: Submit button hover styles were overridden in some themes and Elementor.
+- Fixed: The "Missing 'wpforms' dependency" error appeared on pages without a form.
+
+= 1.9.0.4 =
+- Fixed: Unable to send a form with Constant Contact integration and fatal errors in the admin.
+
+= 1.9.0.3 =
+- Fixed: Compatibility issues with menus and popups on Elementor.
+- Fixed: A fatal error with wp_remote_retrieve_headers occurred in CacheBase.php in some cases.
+- Fixed: Compatibility with the Jetpack Boost plugin.
+
+= 1.9.0.2 =
 - Added: Modern Antispam protection for new forms.
 - Added: Support conditional logic in the Layout field and add the ability to render the label and description for this field.
 - Added: The notification to check prices is added when the currency is switched.

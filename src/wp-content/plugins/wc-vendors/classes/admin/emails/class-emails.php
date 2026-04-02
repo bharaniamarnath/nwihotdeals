@@ -40,8 +40,8 @@ class WCV_Emails {
         add_filter( 'woocommerce_order_needs_shipping_address', array( $this, 'add_customer_shipping_address' ), 10, 1 );
 
         // Trigger application emails as required.
-        add_action( 'add_user_role', array( $this, 'vendor_application' ), 10, 2 );
-        add_action( 'wcvendors_deny_vendor', array( $this, 'deny_application' ) );
+        add_action( 'wcvendors_set_primary_vendor_role', array( $this, 'send_application_emails' ), 10, 4 );
+        add_action( 'wcvendors_deny_vendor', array( $this, 'deny_application' ), 10, 3 );
 
         // WooCommerce Product Enquiry Compatibility.
         add_filter( 'product_enquiry_send_to', array( $this, 'product_enquiry_compatibility' ), 10, 2 );
@@ -71,8 +71,8 @@ class WCV_Emails {
     /**
      * Application status email.
      *
-	 * Trigger the application status email
-	 *
+     * Trigger the application status email
+     *
      * @deprecated
      *
      * @param int    $user_id User ID. The user ID.
@@ -133,6 +133,7 @@ class WCV_Emails {
         require_once WCV_PLUGIN_DIR . 'classes/admin/emails/class-wcv-vendor-notify-denied.php';
         require_once WCV_PLUGIN_DIR . 'classes/admin/emails/class-wcv-vendor-notify-order.php';
         require_once WCV_PLUGIN_DIR . 'classes/admin/emails/class-wcv-vendor-notify-cancelled-order.php';
+        require_once WCV_PLUGIN_DIR . 'classes/admin/emails/class-wcv-vendor-notify-out-of-stock.php';
 
         $emails['WCVendors_Customer_Notify_Shipped']       = new WCVendors_Customer_Notify_Shipped();
         $emails['WCVendors_Admin_Notify_Shipped']          = new WCVendors_Admin_Notify_Shipped();
@@ -144,6 +145,7 @@ class WCV_Emails {
         $emails['WCVendors_Vendor_Notify_Denied']          = new WCVendors_Vendor_Notify_Denied();
         $emails['WCVendors_Vendor_Notify_Order']           = new WCVendors_Vendor_Notify_Order();
         $emails['WCVendors_Vendor_Notify_Cancelled_Order'] = new WCVendors_Vendor_Notify_Cancelled_Order();
+        $emails['WCVendors_Vendor_Notify_Out_Of_Stock']    = new WCVendors_Vendor_Notify_Out_Of_Stock();
 
         return $emails;
     } // email_classes
@@ -274,31 +276,40 @@ class WCV_Emails {
     }
 
     /**
-     * Trigger the vendor application emails
+     * Send application emails when vendor submits application
      *
-     * @since 2.0.0
-     * @version 2.1.7
+     * @since 2.6.6
+     * @version 2.6.6
      *
      * @param int    $user_id The user ID.
-     * @param string $role    The user role.
+     * @param string $role    The role.
+     * @param bool   $use_custom_msg Whether to use the custom message.
+     * @param string $custom_message Custom message for the email.
      */
-    public function vendor_application( $user_id, $role = '' ) {
-
-        /**
-         * If the role is not given, set it according to the vendor approval option in admin
-         */
-        if ( '' === $role ) {
-            $manual = wc_string_to_bool( get_option( 'wcvendors_vendor_approve_registration', 'no' ) );
-            $role   = apply_filters( 'wcvendors_pending_role', ( $manual ? 'pending_vendor' : 'vendor' ) );
+    public function send_application_emails( $user_id, $role = '', $use_custom_msg = false, $custom_message = '' ) {
+        if ( ! $user_id || ! is_numeric( $user_id ) || $user_id <= 0 ) {
+            return;
         }
 
-        if ( 'pending_vendor' === $role ) {
-            $status = __( 'pending', 'wc-vendors' );
+        $user_object = get_userdata( $user_id );
+
+        if ( ! $user_object || ! is_a( $user_object, 'WP_User' ) || empty( $user_object->user_email ) ) {
+            return;
+        }
+
+        $roles = $user_object->roles;
+
+        if ( 'pending_vendor' === $role && in_array( 'pending_vendor', $roles, true ) ) {
+
+            $status = 'pending';
             WC()->mailer()->emails['WCVendors_Vendor_Notify_Application']->trigger( $user_id, $status );
             WC()->mailer()->emails['WCVendors_Admin_Notify_Application']->trigger( $user_id, $status );
-        } elseif ( 'vendor' === $role ) {
-            $status = __( 'approved', 'wc-vendors' );
-            WC()->mailer()->emails['WCVendors_Vendor_Notify_Approved']->trigger( $user_id, $status );
+        }
+
+        if ( 'vendor' === $role && in_array( 'vendor', $roles, true ) ) {
+
+            $status = 'approved';
+            WC()->mailer()->emails['WCVendors_Vendor_Notify_Approved']->trigger( $user_id, $status, $use_custom_msg, $custom_message );
             WC()->mailer()->emails['WCVendors_Admin_Notify_Approved']->trigger( $user_id, $status );
         }
     }
@@ -306,13 +317,20 @@ class WCV_Emails {
     /**
      * Trigger the deny application email
      *
-     * @param WP_User $user The user object.
+     * @param WP_User $user_object    The user object.
+     * @param bool    $use_custom_msg Whether to use the custom message.
+     * @param string  $custom_message Custom message for the email.
      *
      * @since 2.1.8
+     * @version 2.6.4 - Added custom message and use custom message parameters.
      */
-    public function deny_application( $user ) {
-        $user_id = $user->ID;
-        WC()->mailer()->emails['WCVendors_Vendor_Notify_Denied']->trigger( $user_id );
+    public function deny_application( $user_object, $use_custom_msg = false, $custom_message = '' ) {
+
+        if ( ! is_a( $user_object, 'WP_User' ) ) {
+            return;
+        }
+
+        WC()->mailer()->emails['WCVendors_Vendor_Notify_Denied']->trigger( $user_object, $use_custom_msg, $custom_message );
     }
 
     /**

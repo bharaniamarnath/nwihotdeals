@@ -1,6 +1,10 @@
 <?php
 /**
  * All vendors page feature main class
+ *
+ * @version 2.6.5 - Fix security issues.
+ *
+ * @phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
  */
 class WCV_All_Vendors_Page {
 
@@ -157,16 +161,17 @@ class WCV_All_Vendors_Page {
             'wc_countries'      => wcv_get_countries_states(),
             'wc_currency'       => get_woocommerce_currency_symbol(),
             'opening_times'     => ! $is_pro_active ? array() : array_merge(
-				get_time_interval_options(),
-				array(
-					array( 'closed' => __( 'Closed', 'wcvendors-pro' ) ),
-					array( 'open' => __( 'Open', 'wcvendors-pro' ) ),
-				)
-			),
+                get_time_interval_options(),
+                array(
+                    array( 'closed' => __( 'Closed', 'wc-vendors' ) ),
+                    array( 'open' => __( 'Open', 'wc-vendors' ) ),
+                )
+            ),
             'opening_days'      => ! $is_pro_active ? array() : wcv_days_labels(),
             'map_zoom_level'    => get_option( 'wcvendors_pro_google_maps_zoom_level', 18 ),
             'html_settings'     => array(
-                'use_media' => wc_string_to_bool( get_option( 'wcvendors_allow_editor_media', 'no' ) ),
+                'use_media'         => wc_string_to_bool( get_option( 'wcvendors_allow_editor_media', 'no' ) ),
+                'shop_html_enabled' => wc_string_to_bool( get_option( 'wcvendors_display_shop_description_html', 'no' ) ),
             ),
             'maybe_init_map'    => $maybe_init_map,
             'map_api_key'       => $map_api_key,

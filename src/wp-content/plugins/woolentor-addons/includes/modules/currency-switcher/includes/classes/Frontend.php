@@ -1,35 +1,20 @@
 <?php
 namespace Woolentor\Modules\CurrencySwitcher;
+use WooLentor\Traits\Singleton;
 if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
 
 /**
  * Frontend handlers class
  */
 class Frontend {
-
-    /**
-     * [$_instance]
-     * @var null
-     */
-    private static $_instance = null;
-
-    /**
-     * [instance] Initializes a singleton instance
-     * @return [Frontend]
-     */
-    public static function instance() {
-        if ( is_null( self::$_instance ) ) {
-            self::$_instance = new self();
-        }
-        return self::$_instance;
-    }
+    use Singleton;
     
     /**
      * Initialize the class
      */
     private function __construct() {
         $this->includes();
-        $this->init();
+        add_action( 'init', [ $this, 'init' ] );
         add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_scripts' ] );
         add_action( 'wp_ajax_woolentor_save_current_currency',[ $this, 'save_current_currency' ] );
         add_action( 'wp_ajax_nopriv_woolentor_save_current_currency', [ $this, 'save_current_currency' ] );

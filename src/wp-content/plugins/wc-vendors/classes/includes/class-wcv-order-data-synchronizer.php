@@ -1,4 +1,17 @@
 <?php
+
+/**
+ * Order data synchronizer class.
+ *
+ * @version 2.6.5 - Fix security issues.
+ *
+ * @phpcs:disable 	WordPress.DB.DirectDatabaseQuery.DirectQuery
+ * @phpcs:disable 	WordPress.DB.DirectDatabaseQuery.NoCaching
+ * @phpcs:disable 	WordPress.DB.SlowDBQuery.slow_db_query_meta_key
+ * @phpcs:disable 	WordPress.DB.SlowDBQuery.slow_db_query_meta_value
+ * @phpcs:disable 	WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+ */
+
 use Automattic\WooCommerce\Internal\DataStores\Orders\CustomOrdersTableController;
 use Automattic\WooCommerce\Internal\DataStores\Orders\DataSynchronizer;
 use Automattic\WooCommerce\Internal\DataStores\Orders\OrdersTableDataStore;
@@ -94,6 +107,10 @@ class WCV_Order_Data_Synchronizer {
      */
 	public function process_updated_option( $option_key, $old_value, $new_value ) { //phpcs:ignore
         if ( DataSynchronizer::ORDERS_DATA_SYNC_ENABLED_OPTION !== $option_key ) {
+            return;
+        }
+
+        if ( ! wc_string_to_bool( $new_value ) ) {
             return;
         }
 
@@ -375,8 +392,19 @@ class WCV_Order_Data_Synchronizer {
         remove_action( 'woocommerce_new_order', array( $this, 'handle_updated_order' ), 999 );
         remove_action( 'woocommerce_update_order', array( $this, 'handle_updated_order' ), 0 );
 
-        $status       = $order->get_status();
-        $order_status = 'wc-' !== substr( $status, 0, 3 ) ? 'wc-' . $status : $status;
+        $status              = $order->get_status();
+        $order_status        = 'wc-' !== substr( $status, 0, 3 ) ? 'wc-' . $status : $status;
+        $order_date_created  = $order->get_date_created();
+        $order_date_modified = $order->get_date_modified();
+
+                        // Optimize sub order date updates.
+        if ( ! empty( $sub_orders ) ) {
+            foreach ( $sub_orders as $sub_order ) {
+                $sub_order->set_date_created( $order_date_created );
+                $sub_order->set_date_modified( $order_date_modified );
+                $sub_order->save();
+            }
+        }
 
         if ( wcv_cot_enabled() && $this->data_sync_is_enabled() ) {
 
@@ -408,19 +436,28 @@ class WCV_Order_Data_Synchronizer {
                 $vendor_order_transaction = $vendor_order->get_transaction_id();
                 $vendor_order_transaction = '' !== $vendor_order_transaction ? $vendor_order_transaction : $order_details['transaction_id'];
 
-                update_post_meta( $vendor_order_id, '_customer_user', $order_details['customer_id'] );
-                update_post_meta( $vendor_order_id, '_payment_method', $order_details['payment_method'] );
-                update_post_meta( $vendor_order_id, '_transaction_id', $vendor_order_transaction );
-                update_post_meta( $vendor_order_id, '_payment_method_title', $order_details['method_title'] );
-                update_post_meta( $vendor_order_id, '_order_tax', $order->get_total_tax() );
-                update_post_meta( $vendor_order_id, '_order_shipping_tax', $order->get_shipping_tax() );
-                update_post_meta( $vendor_order_id, '_order_total', $order->get_total() );
+                // Batch update post meta for better performance.
+                $meta_updates = array(
+                    '_customer_user'        => $order_details['customer_id'],
+                    '_payment_method'       => $order_details['payment_method'],
+                    '_transaction_id'       => $vendor_order_transaction,
+                    '_payment_method_title' => $order_details['method_title'],
+                    '_order_tax'            => $order->get_total_tax(),
+                    '_order_shipping_tax'   => $order->get_shipping_tax(),
+                    '_order_total'          => $order->get_total(),
+                );
+
+                $this->bulk_update_post_meta( $vendor_order_id, $meta_updates );
 
                 $vendor_order->set_billing_email( $order->get_billing_email() );
                 $vendor_order->save();
+
+                // Free memory for large datasets.
+                unset( $meta_updates, $vendor_order_transaction, $post_data );
             }
 
             update_post_meta( $order_id, 'wcv_sub_orders', $sub_orders_ids );
+            unset( $sub_orders_ids );
         } elseif ( ! wcv_cot_enabled() && $this->data_sync_is_enabled() ) {
 
             $order_table_name = OrdersTableDataStore::get_orders_table_name();
@@ -610,22 +647,26 @@ class WCV_Order_Data_Synchronizer {
             $sub_order_items = $sub_order->get_items();
 
             foreach ( $sub_order_items as $sub_order_item ) {
-                $this->log( 'Found ' . count( $sub_order_items ) . ' items for sub order.' );
+                // Ensure we have a product item before processing.
+                if ( ! is_a( $sub_order_item, 'WC_Order_Item_Product' ) ) {
+                    continue;
+                }
+
+                $product_id = $sub_order_item->get_variation_id() ? $sub_order_item->get_variation_id() : $sub_order_item->get_product_id();
+
                 foreach ( $vendors_product_ids as $vendor_id => $item_ids ) {
-                    $wcv_product_ids = $vendors_product_ids[ $vendor_id ];
-
-                    $this->log( 'Checking vendor item ids: ' . implode( ',', $item_ids ) );
-
-                    if ( ! in_array( $sub_order_item->get_product_id(), $item_ids, true ) ) {
+                    if ( ! in_array( $product_id, $item_ids, true ) ) {
                         continue;
                     }
 
                     $this->log( 'WC Vendors: Adding order item ids to sub order #' . $sub_order->get_id() );
 
                     $sub_order->add_meta_data( 'wcv_vendor_id', $vendor_id, true );
-                    $sub_order->add_meta_data( 'wcv_product_ids', $wcv_product_ids, true );
 
-                    unset( $wcv_product_ids );
+                    $sub_order->add_meta_data( 'wcv_product_ids', $vendors_product_ids[ $vendor_id ], true );
+
+                    // Break after finding the first match to avoid duplicate processing.
+                    break;
                 }
             }
 
@@ -661,7 +702,7 @@ class WCV_Order_Data_Synchronizer {
             ),
         );
 
-        $orders = wc_get_orders( $args );
+        $orders = $this->get_orders( $args );
 
         if ( ! $orders || count( $orders ) === 0 ) {
             $this->log( 'WC Vendors: No orders to process.' );
@@ -727,7 +768,7 @@ class WCV_Order_Data_Synchronizer {
      * @since   2.4.8
      */
     public function migrate_vendor_id() {
-        $orders = wc_get_orders(
+        $orders = $this->get_orders(
             array(
                 'limit'      => $this->batch_size,
                 'type'       => array( 'shop_order_vendor' ),
@@ -1019,7 +1060,7 @@ class WCV_Order_Data_Synchronizer {
             ),
         );
 
-        $orders = wc_get_orders( $args );
+        $orders = $this->get_orders( $args );
 
         return $orders;
     }
@@ -1071,6 +1112,63 @@ class WCV_Order_Data_Synchronizer {
      * Utils
      * ============================================
      */
+
+
+
+    /**
+     * Bulk update post meta for better performance.
+     *
+     * @param int   $post_id The post ID.
+     * @param array $meta_updates Array of meta_key => meta_value pairs.
+     * @return void
+     * @version 2.5.0
+     * @since   2.5.0
+     */
+    private function bulk_update_post_meta( $post_id, $meta_updates ) {
+        global $wpdb;
+
+        if ( empty( $meta_updates ) || ! $post_id ) {
+            return;
+        }
+
+        foreach ( $meta_updates as $meta_key => $meta_value ) {
+            $meta_value = maybe_serialize( $meta_value );
+
+            $existing = $wpdb->get_var(
+                $wpdb->prepare(
+                    "SELECT meta_id FROM {$wpdb->postmeta} WHERE post_id = %d AND meta_key = %s",
+                    $post_id,
+                    $meta_key
+                )
+            );
+
+            if ( $existing ) {
+                $wpdb->update(
+                    $wpdb->postmeta,
+                    array( 'meta_value' => $meta_value ),
+                    array(
+                        'post_id'  => $post_id,
+                        'meta_key' => $meta_key,
+                    ),
+                    array( '%s' ),
+                    array( '%d', '%s' )
+                );
+            } else {
+                $wpdb->insert(
+                    $wpdb->postmeta,
+                    array(
+                        'post_id'    => $post_id,
+                        'meta_key'   => $meta_key,
+                        'meta_value' => $meta_value,
+                    ),
+                    array( '%d', '%s', '%s' )
+                );
+            }
+        }
+
+        // Clear the cache for this post.
+        wp_cache_delete( $post_id, 'post_meta' );
+    }
 
     /**
      * Log a message in the debug log
@@ -1165,7 +1263,7 @@ class WCV_Order_Data_Synchronizer {
 
         ?>
         <div id="message" class="notice is-dismissible wcv-dismiss-sync-notice">
-            <p><strong><?php esc_html_e( 'WC Vendors Marketplace is updating product data in the background' ); ?></strong></p>
+            <p><strong><?php esc_html_e( 'WC Vendors Marketplace is updating product data in the background', 'wc-vendors' ); ?></strong></p>
             <p><?php esc_html_e( 'This process will take some time. Order display and commission calculations may not be accurate until this finishes.', 'wc-vendors' ); ?></p>
             <p>
                 <a href="<?php echo esc_url_raw( $show_progress_url ); ?>" class="button button-primary">
@@ -1180,12 +1278,12 @@ class WCV_Order_Data_Synchronizer {
      * Display admin notice showing progress bar.
      *
      * @return void
-     * @version 2.4.9.2
+     * @version 2.6.5 - Fix security issues.
      * @since   2.4.9.2
      */
     public function data_sync_progress_notice() {
 
-        if ( ! isset( $_GET['show_update_progress_nonce'] ) || ! wp_verify_nonce( $_GET['show_update_progress_nonce'], 'wcv_show_update_progress' ) ) {
+        if ( ! isset( $_GET['show_update_progress_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['show_update_progress_nonce'] ) ), 'wcv_show_update_progress' ) ) {
             return;
         }
 
@@ -1367,5 +1465,102 @@ class WCV_Order_Data_Synchronizer {
         update_option( 'wcvendors_display_notice_hpos_sync_in_progress', 'no' );
 
         wp_send_json_success();
+    }
+
+    /**
+     * Get orders
+     *
+     * @param array $args the query args.
+     * @return array the orders
+     */
+    public function get_orders( $args = array() ) {
+        if ( wcv_hpos_enabled() ) {
+            $orders = wc_get_orders( $args );
+        } else {
+            $orders = $this->get_custom_orders( $args );
+        }
+
+        return $orders;
+    }
+
+    /**
+     * Get custom orders
+     *
+     * @param array $args the query args for the custom orders.
+     * @return array the orders
+     */
+    public function get_custom_orders( $args = array() ) {
+        $limit      = isset( $args['limit'] ) ? $args['limit'] : $this->batch_size;
+        $return_ids = isset( $args['return'] ) && 'ids' === $args['return'];
+        $meta_query = isset( $args['meta_query'] ) ? $args['meta_query'] : array();
+        $status     = isset( $args['status'] ) ? $args['status'] : array();
+        $relation   = isset( $args['meta_query']['relation'] ) ? $args['meta_query']['relation'] : 'AND';
+        $type       = isset( $args['type'] ) ? $args['type'] : 'shop_order';
+        global $wpdb;
+
+        $joins        = array();
+        $wheres       = array();
+        $where_clause = '';
+        $prepare_args = array();
+        $orders       = array();
+
+        unset( $meta_query['relation'] );
+
+        if ( ! empty( $meta_query ) ) {
+            foreach ( $meta_query as $index => $meta ) {
+                $alias        = 'pm' . ( $index + 1 );
+                $exist_or_not = isset( $meta['compare'] ) && 'NOT EXISTS' === $meta['compare'] ? 'IS NULL' : 'IS NOT NULL';
+                $joins[]      = "LEFT JOIN {$wpdb->postmeta} {$alias} ON p.ID = {$alias}.post_id AND {$alias}.meta_key = '" . esc_sql( $meta['key'] ) . "'";
+                $wheres[]     = "{$alias}.post_id {$exist_or_not}";
+            }
+        }
+
+        if ( ! empty( $wheres ) ) {
+            $where_clause = 'WHERE (' . implode( " {$relation} ", $wheres ) . ')';
+        }
+
+        $where_status = '';
+        if ( ! empty( $status ) ) {
+            $where_status_placeholders = array();
+            foreach ( $status as $s ) {
+                $where_status_placeholders[] = '%s';
+                $prepare_args[]              = $s;
+            }
+            $where_status_placeholder = implode( ',', $where_status_placeholders );
+            $where_status             = 'AND p.post_status IN (' . $where_status_placeholder . ')';
+        }
+
+        $where_type = '';
+        if ( ! empty( $type ) ) {
+            if ( is_array( $type ) ) {
+                $where_type_placeholders = array();
+                foreach ( $type as $t ) {
+                    $where_type_placeholders[] = '%s';
+                    $prepare_args[]            = $t;
+                }
+                $where_type_placeholder = implode( ',', $where_type_placeholders );
+            } else {
+                $where_type_placeholder = '%s';
+                $prepare_args[]         = $type;
+            }
+            $where_type = 'AND p.post_type IN (' . $where_type_placeholder . ')';
+        }
+
+        $joins_clause = implode( ' ', $joins );
+
+        $sql = "SELECT p.ID FROM {$wpdb->prefix}posts p {$joins_clause} {$where_clause} {$where_status} {$where_type} LIMIT {$limit}";
+
+        if ( ! empty( $prepare_args ) ) {
+            $sql = $wpdb->prepare( $sql, $prepare_args ); // phpcs:ignore
+        }
+
+        $order_ids = $wpdb->get_col( $sql ); // phpcs:ignore
+
+        if ( ! $return_ids ) {
+            $wc_query = new WC_Order_Query( array( 'post__in' => $order_ids ) );
+            $orders   = $wc_query->get_orders();
+        }
+
+        return $orders;
     }
 }

@@ -4,6 +4,9 @@
  * Promotion page for Advanced Coupons for WooCommerce.
  *
  * @since 2.5.1
+ * @version 2.6.5 - Fix security issues.
+ *
+ * @phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedClassFound
  */
 class WCV_Admin_ACFWF_Promo_Page {
 
@@ -53,14 +56,37 @@ class WCV_Admin_ACFWF_Promo_Page {
      * @since 2.5.1
      */
     public function add_menu() {
-        add_submenu_page(
-            'woocommerce-marketing',
-            __( 'Advanced Coupons', 'advanced-coupons-for-woocommerce' ),
-            __( 'Advanced Coupons', 'advanced-coupons-for-woocommerce' ),
-            'manage_woocommerce',
-            'advanced-coupons-promo',
-            array( $this, 'output' )
-        );
+        global $submenu;
+
+        $menu_slug    = 'woocommerce-marketing';
+        $submenu_slug = 'advanced-coupons-marketing';
+
+        $submenu_exists = false;
+
+        if ( ! isset( $submenu[ $menu_slug ] ) ) {
+            return;
+        }
+
+        if ( isset( $submenu[ $menu_slug ] ) ) {
+            foreach ( $submenu[ $menu_slug ] as $submenu_item ) {
+                if ( $submenu_item[2] === $submenu_slug ) {
+                    $submenu_exists = true;
+                    break;
+                }
+            }
+        }
+
+        if ( ! $submenu_exists ) {
+            add_submenu_page(
+                $menu_slug,
+                __( 'Advanced Coupons', 'wc-vendors' ),
+                __( 'Advanced Coupons', 'wc-vendors' ),
+                'manage_woocommerce',
+                $submenu_slug,
+                array( $this, 'output' ),
+                100
+            );
+        }
     }
 
     /**

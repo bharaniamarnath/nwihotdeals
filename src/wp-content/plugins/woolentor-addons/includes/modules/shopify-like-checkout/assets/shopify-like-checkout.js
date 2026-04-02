@@ -65,7 +65,7 @@
     function serializeFormData(){
 
         let checkoutForm = $('.woolentor-checkout__section.woolentor-step--info').parents('.woocommerce-checkout');
-        let formSerializeArrayData = checkoutForm.serializeArray();
+        let formSerializeArrayData = checkoutForm.find(':input:visible, [class*="woolentor-"] input[type="hidden"]').serializeArray();
 
         let allFieldNames = ( function(){
             let names = [],
@@ -99,9 +99,11 @@
             }
         });
 
+        let baseUrl = window.location.origin + window.location.pathname;
+
         $.ajax({
             type : 'POST',
-            url  : woolentor_slc_params.ajax_url,
+            url: baseUrl + '?wl_ajax=validate_1st_step',
             data : {
                 'action': 'validate_1st_step',
                 'fields': serializeFormData(), // Instance of "$('.woolentor-checkout__section.woolentor-step--info').find(':input').serialize()"

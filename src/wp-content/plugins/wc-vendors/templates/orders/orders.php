@@ -7,6 +7,10 @@
  * @author        Jamie Madden, WC Vendors
  * @package       WCVendors/Templates/Orders
  * @version       2.0.0
+ * @version       2.6.5 - Fix security issues.
+ *
+ * @phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound
+ * @phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -106,8 +110,8 @@ echo esc_html(
                 wc_get_template(
                     'customer-note.php',
                     array(
-						'customer_notes' => $customer_notes,
-					),
+                        'customer_notes' => $customer_notes,
+                    ),
                     'wc-vendors/orders/customer-note/',
                     WCV_PLUGIN_DIR . 'templates/orders/customer-note/'
                 );
@@ -180,7 +184,7 @@ echo esc_html(
                     <div class="order-tracking">
                         <?php
 
-                        wc_enqueue_js( WCV_Vendor_dashboard::wc_st_js( $provider_array ) );
+                        wc_enqueue_js( WCV_Vendor_Dashboard_Legacy::wc_st_js( $provider_array ) );
 
                         $vendor_order = wc_get_order( $order_id );
 
@@ -218,12 +222,12 @@ echo wp_kses_post(
         apply_filters(
             'wcvendors_dashboard_product_orders_pagination_args',
             array(
-				'base'     => add_query_arg( 'paged', '%#%' ),
-				'format'   => '?paged=%#%',
-				'current'  => $paged,
-				'total'    => $total_pages,
-				'end_size' => 3,
-				'mid_size' => 3,
+                'base'     => add_query_arg( 'paged', '%#%' ),
+                'format'   => '?paged=%#%',
+                'current'  => $paged,
+                'total'    => $total_pages,
+                'end_size' => 3,
+                'mid_size' => 3,
             )
         )
     )

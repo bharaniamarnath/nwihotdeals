@@ -32,13 +32,12 @@ class WCVendors_Admin_Notices {
      */
     private static $core_notices
         = array(
-            'install'           => 'install_notice',
-            'update'            => 'update_notice',
-            'template_files'    => 'template_file_check_notice',
-            'theme_support'     => 'theme_check_notice',
-            'review_request'    => 'review_request_notice',
-            'cart_and_checkout' => 'cart_and_checkout_notice',
-            'usage_tracking'    => 'usage_tracking_notice',
+            'install'        => 'install_notice',
+            'update'         => 'update_notice',
+            'template_files' => 'template_file_check_notice',
+            'theme_support'  => 'theme_check_notice',
+            'review_request' => 'review_request_notice',
+            'usage_tracking' => 'usage_tracking_notice',
         );
 
     /**
@@ -48,8 +47,8 @@ class WCVendors_Admin_Notices {
      */
     public static function init() {
 
-        self::$notices = get_option( 'wcvendors_admin_notices', array() );
-
+        $notices       = (array) get_option( 'wcvendors_admin_notices', array() );
+        self::$notices = array_filter( $notices );
         add_action( 'switch_theme', array( __CLASS__, 'reset_admin_notices' ) );
         add_action( 'wcvendors_installed', array( __CLASS__, 'reset_admin_notices' ) );
         add_action( 'wp_loaded', array( __CLASS__, 'hide_notices' ) );
@@ -62,7 +61,6 @@ class WCVendors_Admin_Notices {
         add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_admin_notice_script' ) );
         add_action( 'wp_ajax_wcvendors_dismiss_notice', array( __CLASS__, 'ajax_process_dismiss_notice' ) );
         add_action( 'wcvendors_notice_scheduled_action', array( __CLASS__, 'trigger_notice' ), 10, 1 );
-        add_action( 'wp_ajax_wcvendors_switch_to_classic_cart_checkout', 'wcv_switch_to_classic_cart_checkout' );
     }
 
     /**
@@ -92,14 +90,7 @@ class WCVendors_Admin_Notices {
      * @since 2.4.7
      */
     public static function trigger_notice( $notice_key ) {
-        $notices = self::get_notices();
-        $notice  = in_array( $notice_key, $notices, true ) || in_array( $notice_key, array_keys( $notices ), true ) ? $notice_key : false;
-
-        if ( ! $notice ) {
-            return;
-        }
-
-        update_option( 'wcvendors_display_notice_' . $notice_key, 'yes' );
+        wcv_trigger_admin_notice( $notice_key );
     }
 
     /**
@@ -196,7 +187,7 @@ class WCVendors_Admin_Notices {
     public static function hide_notices() {
 
         if ( isset( $_GET['wcv-hide-notice'] ) && isset( $_GET['_wcv_notice_nonce'] ) ) {
-            if ( ! wp_verify_nonce( $_GET['_wcv_notice_nonce'], 'wcvendors_hide_notices_nonce' ) ) {
+            if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['_wcv_notice_nonce'] ) ), 'wcvendors_hide_notices_nonce' ) ) {
                 wp_die( esc_attr( __( 'Action failed. Please refresh the page and retry.', 'wc-vendors' ) ) );
             }
 
@@ -204,7 +195,7 @@ class WCVendors_Admin_Notices {
                 wp_die( esc_attr( __( 'Cheatin&#8217; huh?', 'wc-vendors' ) ) );
             }
 
-            $hide_notice = sanitize_text_field( $_GET['wcv-hide-notice'] );
+            $hide_notice = sanitize_text_field( wp_unslash( $_GET['wcv-hide-notice'] ) );
             self::remove_notice( $hide_notice );
             do_action( 'wcvendors_hide_' . $hide_notice . '_notice' );
         }
@@ -365,7 +356,7 @@ class WCVendors_Admin_Notices {
      * @since 2.4.7 - Added
      * @return void
      */
-    static public function review_request_notice() {
+    public static function review_request_notice() {
         $has_notice = self::has_notice( 'review_request' );
         $is_display = wc_string_to_bool( get_option( 'wcvendors_display_notice_review_request', 'no' ) ) && $has_notice;
 
@@ -373,34 +364,13 @@ class WCVendors_Admin_Notices {
             return;
         }
 
-        $screen = get_current_screen();
-        if ( ! $screen ) {
-            return;
-        }
-
-        $allow_screen = array(
-            'dashboard',
-            'wc-vendors_page_wcv-commissions',
-            'wc-vendors_page_wcv-vendor-settings',
-            'wc-vendors_page_wcv-extensions',
-            'woocommerce_page_wc-admin',
-            'woocommerce_page_wc-settings',
-            'woocommerce_page_wc-reports',
-            'woocommerce_page_wc-status',
-            'edit-shop_order',
-            'edit-shop_coupon',
-            'plugins',
-        );
-
-        if ( ! in_array( $screen->id, $allow_screen, true ) ) {
-            return;
-        }
-
         if ( ! current_user_can( 'manage_options' ) ) {
             return;
         }
 
-        include 'views/notices/html-notice-review-request.php';
+        if ( wcv_check_allow_screen() ) {
+            include 'views/notices/html-notice-review-request.php';
+        }
     }
 
     /**
@@ -435,15 +405,15 @@ class WCVendors_Admin_Notices {
      * @return void
      */
     public static function ajax_process_dismiss_notice() {
-        $nonce = isset( $_POST['nonce'] ) ? sanitize_text_field( $_POST['nonce'] ) : '';
+        $nonce = isset( $_POST['nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['nonce'] ) ) : '';
         if ( ! wp_verify_nonce( $nonce, 'wcv_dismiss_notice' ) || ( defined( 'DOING_AJAX' ) && ! DOING_AJAX ) ) {
             return;
         }
 
         $action_key   = 'wcvendors_notice_scheduled_action';
-        $is_delay     = isset( $_POST['is_delay'] ) ? wc_string_to_bool( $_POST['is_delay'] ) : false;
-        $notice_key   = isset( $_POST['notice_key'] ) ? sanitize_text_field( $_POST['notice_key'] ) : '';
-        $data_dismiss = isset( $_POST['data_dismiss'] ) ? sanitize_text_field( $_POST['data_dismiss'] ) : '';
+        $is_delay     = isset( $_POST['is_delay'] ) ? wc_string_to_bool( sanitize_text_field( wp_unslash( $_POST['is_delay'] ) ) ) : false;
+        $notice_key   = isset( $_POST['notice_key'] ) ? sanitize_text_field( wp_unslash( $_POST['notice_key'] ) ) : '';
+        $data_dismiss = isset( $_POST['data_dismiss'] ) ? sanitize_text_field( wp_unslash( $_POST['data_dismiss'] ) ) : '';
 
         if ( empty( $notice_key ) || ! self::has_notice( $notice_key ) ) {
             return;
@@ -468,37 +438,6 @@ class WCVendors_Admin_Notices {
         wp_die();
     }
 
-    /**
-     * Cart and checkout notice
-     *
-     * @since 2.4.7
-     * @return void
-     */
-    public static function cart_and_checkout_notice() {
-
-        $cart_page     = get_post( wc_get_page_id( 'cart' ) );
-        $checkout_page = get_post( wc_get_page_id( 'checkout' ) );
-        $has_block     = has_block( 'woocommerce/checkout', $checkout_page ) || has_block( 'woocommerce/cart', $cart_page );
-        $is_dimissed   = wc_string_to_bool( get_option( 'wcvendors_dismissed_notice_cart_and_checkout', 'no' ) );
-
-        if ( ! current_user_can( 'manage_options' ) ) {
-            return;
-        }
-
-        if ( ! $has_block ) {
-            return;
-        }
-
-        if ( version_compare( WC()->version, '8.3.0', '<' ) ) {
-            return;
-        }
-
-        if ( $is_dimissed ) {
-            return;
-        }
-
-        include 'views/notices/html-notice-cart-and-checkout.php';
-    }
 
     /**
      * Usage tracking notice

@@ -10,6 +10,7 @@
 /** @noinspection PhpUndefinedClassInspection */
 // phpcs:enable Generic.Commenting.DocComment.MissingShort
 
+use WPForms\Tasks\Tasks;
 use WPForms\Vendor\TrueBV\Punycode;
 
 /**
@@ -49,7 +50,7 @@ function wpforms_is_url( $url ): bool {
  *
  * @return string|false Returns a valid email address on success, false on failure.
  */
-function wpforms_is_email( $email ) { // phpcs:ignore Generic.Metrics.CyclomaticComplexity.TooHigh, Generic.Metrics.CyclomaticComplexity.MaxExceeded
+function wpforms_is_email( $email ) { // phpcs:ignore Generic.Metrics.CyclomaticComplexity.TooHigh
 
 	static $punycode;
 
@@ -76,7 +77,7 @@ function wpforms_is_email( $email ) { // phpcs:ignore Generic.Metrics.Cyclomatic
 		return false;
 	}
 
-	list( $local, $domain ) = $email_arr;
+	[ $local, $domain ] = $email_arr;
 
 	/**
 	 * RFC requires local part to be no longer than 64 octets.
@@ -191,11 +192,11 @@ function wpforms_is_amp( $check_theme_support = true ): bool {
 function wpforms_is_admin_page( $slug = '', $view = '' ): bool {
 
 	// phpcs:disable WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash
+	$page = ( (array) ( $_REQUEST['page'] ?? '' ) )[0];
 
 	// Check against basic requirements.
 	if (
-		empty( $_REQUEST['page'] ) ||
-		strpos( $_REQUEST['page'], 'wpforms' ) === false ||
+		strpos( $page, 'wpforms' ) === false ||
 		! is_admin()
 	) {
 		return false;
@@ -209,14 +210,13 @@ function wpforms_is_admin_page( $slug = '', $view = '' ): bool {
 		return false;
 	}
 
-	// Check against sub-level page view.
+	// Check against sublevel page view.
 	if (
 		! empty( $view ) &&
 		( empty( $_REQUEST['view'] ) || $_REQUEST['view'] !== $view )
 	) {
 		return false;
 	}
-
 	// phpcs:enable WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash
 
 	return true;
@@ -239,24 +239,66 @@ function wpforms_is_empty_string( $value ): bool {
 /**
  * Determine if the request is a rest API call.
  *
- * NOTE: The function shouldn't be used before the `rest_api_init` action.
+ * Case #1: After WP_REST_Request initialization
+ * Case #2: Support "plain" permalink settings
+ * Case #3: It can happen that WP_Rewrite is not yet initialized,
+ *          so do this (wp-settings.php)
+ * Case #4: URL Path begins with wp-json/ (your REST prefix)
+ *          Also supports WP installations in sub folders
  *
  * @since 1.8.8
  *
- * @return bool|null True if the request is a REST API call, null if the function is called incorrectly.
+ * @return bool True if the request is a REST API call, false if not.
+ * @author matzeeable
  */
-function wpforms_is_rest() { // phpcs:ignore Generic.Metrics.CyclomaticComplexity.TooHigh
+function wpforms_is_rest(): bool {
 
-	// The function is not available, means that `wpforms_is_rest` is called incorrectly.
-	// The possible reason is that the function is called too early, before the `rest-api.php` is loaded.
-	// In this case, we should not proceed with the check.
-	if ( ! function_exists( 'rest_url' ) ) {
-		return null;
+	if ( ! isset( $_SERVER['REQUEST_URI'] ) ) {
+		return false;
 	}
 
-	// We can replace `wpforms_is_rest` with `wp_is_rest_endpoint` function when the minimum WP version is bumped to 6.5.
-	if ( function_exists( 'wp_is_rest_endpoint' ) ) {
-		return wp_is_rest_endpoint();
+	// Case #1.
+	if ( defined( 'REST_REQUEST' ) && constant( 'REST_REQUEST' ) ) {
+		return true;
+	}
+
+	// Case #2.
+	// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+	$rest_route = isset( $_GET['rest_route'] ) ?
+		filter_input( INPUT_GET, 'rest_route', FILTER_SANITIZE_FULL_SPECIAL_CHARS ) :
+		'';
+
+	if ( strpos( trim( $rest_route, '\\/' ), rest_get_url_prefix() ) === 0 ) {
+		return true;
+	}
+
+	// Case #3.
+	global $wp_rewrite;
+	if ( $wp_rewrite === null ) {
+		// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
+		$wp_rewrite = new WP_Rewrite();
+	}
+
+	// Case #4.
+	$current_url = (string) wp_parse_url( add_query_arg( [] ), PHP_URL_PATH );
+	$rest_url    = wp_parse_url( trailingslashit( rest_url() ), PHP_URL_PATH );
+
+	return strpos( $current_url, $rest_url ) === 0;
+}
+
+/**
+ * Determine if the request is a WPForms related rest API call.
+ *
+ * NOTE: The function shouldn't be used before the `rest_api_init` action.
+ *
+ * @since 1.9.6.1
+ *
+ * @return bool True if the request is a WPForms related rest API call, false if not.
+ */
+function wpforms_is_wpforms_rest(): bool {
+
+	if ( ! wpforms_is_rest() ) {
+		return false;
 	}
 
 	$rest_url         = wp_parse_url( trailingslashit( rest_url() ) );
@@ -264,8 +306,8 @@ function wpforms_is_rest() { // phpcs:ignore Generic.Metrics.CyclomaticComplexit
 	$rest_url['path'] = $rest_url['path'] ?? '';
 
 	// phpcs:disable WordPress.Security.NonceVerification.Recommended
-	$is_rest_plain    = $rest_url['path'] === '/index.php' && ! empty( $_GET['rest_route'] );
-	$is_rest_postname = strpos( $rest_url['path'], '/wp-json/' ) !== false;
+	$is_rest_plain     = $rest_url['path'] === '/index.php' && ! empty( $_GET['rest_route'] );
+	$is_rest_post_name = strpos( $rest_url['path'], '/wp-json/' ) !== false;
 
 	if ( $is_rest_plain ) {
 		$rest_route = sanitize_text_field( wp_unslash( $_GET['rest_route'] ) );
@@ -274,7 +316,7 @@ function wpforms_is_rest() { // phpcs:ignore Generic.Metrics.CyclomaticComplexit
 	}
 	// phpcs:enable WordPress.Security.NonceVerification.Recommended
 
-	if ( $is_rest_postname ) {
+	if ( $is_rest_post_name ) {
 		return strpos( $current_url['path'] ?? '', '/wpforms/' ) !== false;
 	}
 
@@ -285,10 +327,13 @@ function wpforms_is_rest() { // phpcs:ignore Generic.Metrics.CyclomaticComplexit
  * Determine if the request is WPForms AJAX.
  *
  * @since 1.8.0
+ * @since 1.9.1 Added an optional parameter to check for a specific action.
+ *
+ * @param string $action Certain AJAX action to check. Optional. Default is empty.
  *
  * @return bool
  */
-function wpforms_is_ajax(): bool {
+function wpforms_is_ajax( string $action = '' ): bool {
 
 	if ( ! wp_doing_ajax() ) {
 		return false;
@@ -301,9 +346,14 @@ function wpforms_is_ajax(): bool {
 	}
 
 	// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-	$action = isset( $_REQUEST['action'] ) ? sanitize_key( $_REQUEST['action'] ) : '';
+	$request_action    = isset( $_REQUEST['action'] ) ? sanitize_key( $_REQUEST['action'] ) : '';
+	$is_wpforms_action = strpos( $request_action, 'wpforms_' ) === 0;
 
-	return strpos( $action, 'wpforms_' ) === 0;
+	if ( empty( $action ) ) {
+		return $is_wpforms_action;
+	}
+
+	return $is_wpforms_action && $action === $request_action;
 }
 
 /**
@@ -411,6 +461,25 @@ function wpforms_is_gutenberg_active(): bool {
 }
 
 /**
+ * Check if website support Divi Builder.
+ *
+ * @since 1.9.2.3
+ *
+ * @return bool True if Divi builder plugin or Divi or Extra theme is active.
+ */
+function wpforms_is_divi_active(): bool {
+
+	if ( function_exists( 'et_divi_builder_init_plugin' ) ) {
+		return true;
+	}
+
+	$allow_themes = [ 'Divi', 'Extra' ];
+	$theme_name   = get_template();
+
+	return in_array( $theme_name, $allow_themes, true );
+}
+
+/**
  * Determines whether the current request is a WP CLI request.
  *
  * @since 1.7.6
@@ -420,6 +489,18 @@ function wpforms_is_gutenberg_active(): bool {
 function wpforms_doing_wp_cli(): bool {
 
 	return defined( 'WP_CLI' ) && WP_CLI;
+}
+
+/**
+ * Determines whether the Action Scheduler task is executing.
+ *
+ * @since 1.9.4
+ *
+ * @return bool
+ */
+function wpforms_doing_scheduled_action(): bool {
+
+	return class_exists( Tasks::class ) && Tasks::is_executing();
 }
 
 /**
@@ -486,16 +567,36 @@ function wpforms_is_block_editor(): bool {
  */
 function wpforms_is_editor_page(): bool {
 
-	// phpcs:disable WordPress.Security.NonceVerification
 	$rest_request = defined( 'REST_REQUEST' ) && REST_REQUEST;
+	// phpcs:ignore WordPress.Security.NonceVerification
 	$context      = isset( $_REQUEST['context'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['context'] ) ) : '';
-	$post_action  = isset( $_POST['action'] ) ? sanitize_text_field( wp_unslash( $_POST['action'] ) ) : '';
-	$get_action   = isset( $_GET['action'] ) ? sanitize_text_field( wp_unslash( $_GET['action'] ) ) : '';
-
 	$is_gutenberg = $rest_request && $context === 'edit';
-	$is_elementor = $post_action === 'elementor_ajax' || $get_action === 'elementor';
-	$is_divi      = ! empty( $_GET['et_fb'] ) || $post_action === 'wpforms_divi_preview';
-	// phpcs:enable WordPress.Security.NonceVerification
 
-	return $is_gutenberg || $is_elementor || $is_divi;
+	return $is_gutenberg || wpforms_is_elementor_editor() || wpforms_is_divi_editor();
+}
+
+/**
+ * Determines whether the current context is the Divi editor.
+ *
+ * @since 1.9.4
+ *
+ * @return bool
+ */
+function wpforms_is_divi_editor(): bool {
+
+	// phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.NonceVerification.Recommended
+	return ! empty( $_GET['et_fb'] ) || ( isset( $_POST['action'] ) && sanitize_key( $_POST['action'] ) === 'wpforms_divi_preview' );
+}
+
+/**
+ * Determines whether the current request is being made within the Elementor editor.
+ *
+ * @since 1.10.0
+ *
+ * @return bool
+ */
+function wpforms_is_elementor_editor(): bool {
+
+	// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.NonceVerification.Missing
+	return ( ! empty( $_POST['action'] ) && $_POST['action'] === 'elementor_ajax' ) || ( ! empty( $_GET['action'] ) && $_GET['action'] === 'elementor' );
 }

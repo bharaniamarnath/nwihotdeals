@@ -7,6 +7,9 @@
  * @author        Jamie Madden, WC Vendors
  * @package       WCVendors/Templates/dashboard
  * @version       2.2.1
+ * @version       2.6.5 - Fix security issues.
+ *
+ * @phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -54,7 +57,7 @@ $term_label_css_classes  = apply_filters( 'wcvendors_vendor_registration_term_la
     <?php if ( 'yes' === get_option( 'wcvendors_vendor_allow_registration', 'no' ) ) { ?>
         <form method="POST" action="">
             <div class="clear"></div>
-            <p class="form-row">
+            <p class="form-row-inline">
                 <?php wp_nonce_field( 'apply_for_vendor', 'apply_for_vendor_nonce' ); ?>
                 <input
                     class="input-checkbox"
@@ -95,7 +98,7 @@ $term_label_css_classes  = apply_filters( 'wcvendors_vendor_registration_term_la
                     id="terms_and_conditions_visibility"
                     value="<?php echo esc_attr( $terms_and_conditions_visibility ); ?>"
                 />
-                <p class="form-row agree-to-terms-container" style="display:<?php echo esc_attr( $display ); ?>">
+                <p class="form-row-inline agree-to-terms-container" style="display:<?php echo esc_attr( $display ); ?>">
                     <input class="input-checkbox"
                             id="agree_to_terms" <?php checked( isset( $_POST['agree_to_terms'] ), true ); // phpcs:ignore ?>
                             type="checkbox" name="agree_to_terms" value="1"/>

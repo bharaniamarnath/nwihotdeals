@@ -1,5 +1,8 @@
 <?php
-
+use WC_Vendors\Classes\Front\WCV_Order_Controller;
+use WC_Vendors\Classes\Front\WCV_Product_Controller;
+use WC_Vendors\Classes\Front\WCV_Vendor_Controller;
+use WC_Vendors\Classes\Front\WCV_Reports_Controller;
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
@@ -12,6 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @since   2.4.8 - Refactored from class-wc-vendors.php
  */
 class WC_Vendors_Bootstrap {
+ // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedClassFound
 
     /**
      * Plugin version
@@ -42,15 +46,48 @@ class WC_Vendors_Bootstrap {
     public $title;
 
     /**
+     * Product controller
+     *
+     * @since    2.5.2
+     * @access   private
+     * @var      WCV_Product_Controller $product_controller
+     */
+    public $product_controller;
+
+    /**
+     * Order controller
+     *
+     * @since    2.5.2
+     * @access   private
+     * @var      WCV_Order_Controller $order_controller
+     */
+    public $order_controller;
+
+    /**
+     * Vendor controller
+     *
+     * @since    2.5.2
+     * @access   private
+     * @var      WCV_Vendor_Controller $vendor_controller
+     */
+    public $vendor_controller;
+
+    /**
+     * Report controller
+     *
+     * @since    2.5.2
+     * @access   private
+     * @var      WCV_Report_Controller $report_controller
+     */
+    public $report_controller;
+
+    /**
      * Constructor.
      */
     public function __construct() {
 
-        // Load text domain.
-        add_action( 'init', array( $this, 'load_il8n' ), 0 );
-
-        $this->title = __( 'WC Vendors Marketplace', 'wc-vendors' );
-
+        $this->title = 'WC Vendors Marketplace';
+        add_action( 'plugins_loaded', array( $this, 'load_il8n' ) );
         // Install & upgrade.
         add_action( 'admin_init', array( $this, 'check_install' ) );
         add_action( 'init', array( $this, 'maybe_flush_permalinks' ), 99 );
@@ -58,9 +95,9 @@ class WC_Vendors_Bootstrap {
 
         add_action( 'wcvendors_flush_rewrite_rules', array( $this, 'flush_rewrite_rules' ) );
 
-        add_action( 'plugins_loaded', array( $this, 'include_gateways' ) );
-        add_action( 'plugins_loaded', array( $this, 'include_core' ) );
-        add_action( 'init', array( $this, 'include_init' ) );
+        $this->include_gateways();
+        $this->include_core();
+        $this->include_init();
         add_action( 'current_screen', array( $this, 'include_assets' ) );
 
         // Legacy settings.
@@ -86,13 +123,56 @@ class WC_Vendors_Bootstrap {
         // Test payment gateway.
         add_filter( 'woocommerce_payment_gateways', array( $this, 'add_wcvendors_test_gateway' ) );
 
+        add_action( 'woocommerce_blocks_payment_method_type_registration', array( $this, 'add_wcv_test_gateway_block' ), 10, 1 );
+
         add_action( 'wcvendors_sync_vendor_status', 'wcvendors_add_vendor_status_meta_key' );
 
-        add_action( 'wcvendors_after_update_plugin', 'wcvendors_add_vendor_status_meta_key' );
-        add_action( 'wcvendors_after_update_plugin', 'wcv_sync_order_meta_data' );
+        add_action( 'wcvendors_after_update_plugin', array( $this, 'after_plugin_update' ) );
 
         add_action( 'upgrader_process_complete', array( $this, 'run_action_after_process_complete' ), 10, 2 );
-        add_action( 'upgrader_overwrote_package', array( $this, 'run_action_after_overwrote_package', 10, 3 ) );
+        add_action( 'upgrader_overwrote_package', array( $this, 'run_action_after_overwrote_package' ), 10, 3 );
+        add_action( 'after_setup_theme', array( $this, 'init_plugin_installer' ) );
+
+        $this->define_public_hooks();
+
+        // Add setup wizard.
+        add_action( 'admin_init', array( $this, 'maybe_launch_setup_wizard' ) );
+    }
+
+    /**
+     * Maybe launch the setup wizard after activating the plugin.
+     *
+     * @return void
+     * @version 2.4.9
+     * @since   2.4.9
+     */
+    public function maybe_launch_setup_wizard() {
+        if ( ! get_option( 'wcvendors_wizard_complete', false ) && wc_string_to_bool( get_transient( 'wcvendors_activation_redirect' ) ) ) {
+            delete_transient( 'wcvendors_activation_redirect' );
+            wp_safe_redirect( admin_url( 'admin.php?page=wcv-setup' ) );
+            exit;
+        }
+    }
+
+    /**
+     * Initialize the plugin installer
+     *
+     * @since 2.5.6 - Fix text domain error
+     */
+    public function init_plugin_installer() {
+        if ( ! class_exists( 'WCV_Plugin_Installer' ) ) {
+            include_once WCV_PLUGIN_DIR . 'classes/admin/class-wcv-plugin-installer.php';
+        }
+        new WCV_Plugin_Installer();
+    }
+
+    /**
+     * Run action after plugin update
+     */
+    public function after_plugin_update() {
+        $synchronizer = new WCV_Order_Data_Synchronizer();
+        $synchronizer->maybe_schedule_hpos_data_sync();
+        wp_schedule_single_event( time() + 5, 'wcvendors_sync_vendor_status' );
     }
 
     /**
@@ -235,7 +315,7 @@ class WC_Vendors_Bootstrap {
     public function load_legacy_settings() {
         if ( empty( self::$pv_options ) ) {
             include_once WCV_PLUGIN_DIR . 'classes/includes/class-sf-settings.php';
-            self::$pv_options = new SF_Settings_API();
+            self::$pv_options = new WCV_SF_Settings_API();
         }
     }
 
@@ -248,10 +328,9 @@ class WC_Vendors_Bootstrap {
      */
     public function load_il8n() {
         $locale = is_admin() && function_exists( 'get_user_locale' ) ? get_user_locale() : get_locale();
-        $locale = apply_filters( 'plugin_locale', $locale, 'wc-vendors' );
+        $locale = apply_filters( 'plugin_locale', $locale, 'wc-vendors' ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
         unload_textdomain( 'wc-vendors' );
         load_textdomain( 'wc-vendors', WP_LANG_DIR . '/wc-vendors/wc-vendors-' . $locale . '.mo' );
-        load_plugin_textdomain( 'wc-vendors', false, plugin_basename( dirname( WCV_PLUGIN_FILE ) ) . '/languages' );
     }
 
     /**
@@ -261,7 +340,6 @@ class WC_Vendors_Bootstrap {
 
         include_once WCV_PLUGIN_DIR . 'classes/class-queries.php';
         include_once WCV_PLUGIN_DIR . 'classes/class-vendors.php';
-        include_once WCV_PLUGIN_DIR . 'classes/class-cron.php';
         include_once WCV_PLUGIN_DIR . 'classes/class-commission.php';
         include_once WCV_PLUGIN_DIR . 'classes/class-shipping.php';
         include_once WCV_PLUGIN_DIR . 'classes/class-vendor-order.php';
@@ -270,13 +348,32 @@ class WC_Vendors_Bootstrap {
         include_once WCV_PLUGIN_DIR . 'classes/includes/wcv-vendor-functions.php';
         include_once WCV_PLUGIN_DIR . 'classes/includes/wcv-update-functions.php';
         include_once WCV_PLUGIN_DIR . 'classes/includes/wcv-helper-functions.php';
+        include_once WCV_PLUGIN_DIR . 'classes/includes/wcv-dashboard-functions.php';
         include_once WCV_PLUGIN_DIR . 'classes/admin/emails/class-emails.php';
         include_once WCV_PLUGIN_DIR . 'classes/class-wcv-shipping-providers.php';
         include_once WCV_PLUGIN_DIR . 'classes/includes/class-wcv-order-data-synchronizer.php';
         include_once WCV_PLUGIN_DIR . 'classes/class-vendor-settings.php';
         include_once WCV_PLUGIN_DIR . 'classes/includes/class-all-vendors-page.php';
+        include_once WCV_PLUGIN_DIR . 'classes/includes/class-wcv-marketplace-backend-dashboard.php';
         include_once WCV_PLUGIN_DIR . 'classes/includes/class-wcv-cli.php';
+        include_once WCV_PLUGIN_DIR . 'classes/includes/class-wcv-order-cli.php';
         include_once WCV_PLUGIN_DIR . 'classes/includes/class-wcv-seo-compatibility.php';
+        include_once WCV_PLUGIN_DIR . 'classes/includes/class-wcv-product-dropdown-walker.php';
+        include_once WCV_PLUGIN_DIR . 'classes/includes/class-wcv-product-category-multilevel-walker.php';
+        include_once WCV_PLUGIN_DIR . 'classes/includes/class-wcv-utils.php';
+        include_once WCV_PLUGIN_DIR . 'classes/front/class-wcv-form-helper.php';
+        include_once WCV_PLUGIN_DIR . 'classes/front/class-wcv-product-controller.php';
+        include_once WCV_PLUGIN_DIR . 'classes/front/class-wcv-vendor-controller.php';
+        include_once WCV_PLUGIN_DIR . 'classes/front/class-wcv-reports-controller.php';
+        include_once WCV_PLUGIN_DIR . 'classes/front/class-wcv-order-controller.php';
+        include_once WCV_PLUGIN_DIR . 'classes/front/forms/class-wcv-product-form.php';
+        include_once WCV_PLUGIN_DIR . 'classes/front/forms/class-wcv-tracking-number-form.php';
+        include_once WCV_PLUGIN_DIR . 'classes/front/forms/class-wcv-store-form.php';
+        include_once WCV_PLUGIN_DIR . 'classes/front/dashboard/class-vendor-dashboard.php';
+        include_once WCV_PLUGIN_DIR . 'classes/front/class-wcv-table-helper.php';
+        include_once WCV_PLUGIN_DIR . 'classes/front/class-wcv-dashboard-controller.php';
+        include_once WCV_PLUGIN_DIR . 'classes/includes/class-wcv-reports.php';
+        include_once WCV_PLUGIN_DIR . 'classes/includes/class-wcv-reports-cache.php';
 
         if ( is_admin() ) {
 
@@ -301,6 +398,8 @@ class WC_Vendors_Bootstrap {
             include_once WCV_PLUGIN_DIR . 'classes/admin/class-wcv-plugin-installer.php';
             include_once WCV_PLUGIN_DIR . 'classes/admin/class-wcv-license-page.php';
             include_once WCV_PLUGIN_DIR . 'classes/admin/class-wcv-admin-acfwf-promo-page.php';
+            include_once WCV_PLUGIN_DIR . 'classes/admin/class-admin-vendor-product.php';
+            include_once WCV_PLUGIN_DIR . 'classes/admin/wcv-admin-functions.php';
 
             new WCV_Admin_Lite_Bar();
             new WCV_Vendor_Applicants();
@@ -309,21 +408,19 @@ class WC_Vendors_Bootstrap {
             new WCV_Admin_Reports();
             new WCV_Admin_Import_Export();
             new WCVendors_Admin_Orders();
-            new WCV_Plugin_Installer();
             new WCV_Admin_ACFWF_Promo_Page();
 
         } else {
 
             include_once WCV_PLUGIN_DIR . 'classes/includes/class-wcv-shortcodes.php';
             include_once WCV_PLUGIN_DIR . 'classes/front/class-vendor-cart.php';
-            include_once WCV_PLUGIN_DIR . 'classes/front/dashboard/class-vendor-dashboard.php';
             include_once WCV_PLUGIN_DIR . 'classes/front/class-vendor-shop.php';
             include_once WCV_PLUGIN_DIR . 'classes/front/signup/class-vendor-signup.php';
             include_once WCV_PLUGIN_DIR . 'classes/front/orders/class-orders.php';
             include_once WCV_PLUGIN_DIR . 'classes/front/account/class-wc-account-links.php';
+            include_once WCV_PLUGIN_DIR . 'classes/front/class-wcv-public-assets.php';
 
             new WCV_Orders();
-            new WCV_Vendor_Dashboard();
             new WCV_Vendor_Signup();
             new WCV_Vendor_Shop();
             new WCV_Vendor_Cart();
@@ -336,15 +433,23 @@ class WC_Vendors_Bootstrap {
             include_once WC()->plugin_path() . '/includes/admin/wc-meta-box-functions.php';
         }
 
+        new WCV_Vendor_Dashboard();
         new WCV_Shipping();
-        new WCV_Cron();
         new WCV_Commission();
         new WCV_Vendors();
         new WCV_Emails();
 
+        $reports_cache = WCV_Reports_Cache::get_instance();
+        $reports_cache->init_hooks();
+        $reports_cache->schedule_cache_pre_caching();
+
         // Initialize the synchronizer.
         $synchronizer = new WCV_Order_Data_Synchronizer();
         $synchronizer->init_hooks();
+
+        // Out-of-stock vendor reminders.
+        include_once WCV_PLUGIN_DIR . 'classes/class-wcv-out-of-stock-reminder.php';
+        new WCV_Out_Of_Stock_Reminder();
     }
 
     /**
@@ -360,6 +465,7 @@ class WC_Vendors_Bootstrap {
         require_once WCV_PLUGIN_DIR . 'classes/admin/class-admin-users.php';
         include_once WCV_PLUGIN_DIR . 'classes/admin/class-wcv-usage.php';
 
+        new Usage();
         new WCV_Vendor_Reports();
         new WCV_Product_Meta();
         new WCV_Admin_Users();
@@ -428,9 +534,9 @@ class WC_Vendors_Bootstrap {
      * Include payment gateways
      */
     public function include_gateways() {
-        require_once WCV_PLUGIN_DIR . 'classes/gateways/PayPal_AdvPayments/paypal_ap.php';
         require_once WCV_PLUGIN_DIR . 'classes/gateways/PayPal_Masspay/class-paypal-masspay.php';
         require_once WCV_PLUGIN_DIR . 'classes/gateways/WCV_Gateway_Test/class-wcv-gateway-test.php';
+        require_once WCV_PLUGIN_DIR . 'classes/gateways/WCV_Gateway_Test/class-wcv-gateway-test-block.php';
     }
 
     /**
@@ -461,7 +567,7 @@ class WC_Vendors_Bootstrap {
      */
     public function add_rewrite_endpoint() {
         add_rewrite_endpoint( 'become-a-vendor', EP_PAGES );
-        $this->flush_rewrite_rules();
+        $this->maybe_flush_permalinks();
     }
 
     /**
@@ -505,7 +611,7 @@ class WC_Vendors_Bootstrap {
                 'Backup your site and update your theme and extensions, and <a href="%s">review update details here</a> before upgrading.',
                 'wc-vendors'
             ),
-            'https://docs.wcvendors.com/knowledge-base/upgrading-to-wc-vendors-2-0/'
+            'https://wcvendors.com/knowledge-base/upgrading-to-wc-vendors-2-0/'
         );
 
         if ( version_compare( WCV_VERSION, '2.0.0', '<' ) && version_compare( $new_version, '2.0.0', '>=' ) ) {
@@ -554,5 +660,110 @@ class WC_Vendors_Bootstrap {
     public function add_wcvendors_test_gateway( $methods ) {
         $methods[] = 'WC_Gateway_WCV_Gateway_Test';
         return $methods;
+    }
+
+    /**
+     * Add blocks support for the WC Vendors Test Gateway.
+     *
+     * @since 2.6.7
+     * @version 2.6.7
+     *
+     * @param Automattic\WooCommerce\Blocks\Payments\Integrations\PaymentMethodTypesRegistry $payment_method_types The payment method types registry.
+     * @return void
+     */
+    public function add_wcv_test_gateway_block( $payment_method_types ) {
+
+        if ( ! class_exists( 'WC_Payment_Method_Type_WCV_Gateway_Test_Block' ) ) {
+            return;
+        }
+        $payment_method_types->register( new WC_Payment_Method_Type_WCV_Gateway_Test_Block() );
+    }
+
+    /**
+     * Define the public hooks
+     *
+     * @return void
+     */
+    public function define_public_hooks() {
+        $this->product_controller = new WCV_Product_Controller();
+        $this->order_controller   = new WCV_Order_Controller( $this->title, $this->version, false );
+        $this->vendor_controller  = new WCV_Vendor_Controller();
+        $this->report_controller  = new WCV_Reports_Controller();
+        // Product controller actions.
+        add_action( 'template_redirect', array( $this->product_controller, 'process_submit' ) );
+        add_action( 'template_redirect', array( $this->product_controller, 'process_delete' ) );
+        add_action( 'template_redirect', array( $this->product_controller, 'process_duplicate' ) );
+        add_action( 'template_redirect', array( $this->report_controller, 'process_submit' ) );
+
+        // Product controller ajax actions.
+        add_action( 'wp_ajax_wcv_json_search_products', array( $this->product_controller, 'json_search_products' ) );
+        add_action( 'wp_ajax_wcv_json_search_tags', array( $this->product_controller, 'json_search_product_tags' ) );
+        add_action( 'wp_ajax_wcv_json_add_attribute', array( $this->product_controller, 'json_add_attribute' ) );
+        add_action( 'wp_ajax_wcv_json_add_new_attribute', array( $this->product_controller, 'json_add_new_attribute' ) );
+        add_action( 'wp_ajax_wcv_json_default_variation_attributes', array( $this->product_controller, 'json_default_variation_attributes' ) );
+        add_action( 'wp_ajax_wcv_json_load_variation', array( $this->product_controller, 'json_load_variations' ) );
+        add_action( 'wp_ajax_wcv_json_add_variation', array( $this->product_controller, 'json_add_variation' ) );
+        add_action( 'wp_ajax_wcv_json_link_all_variations', array( $this->product_controller, 'json_link_all_variations' ) );
+
+        add_filter( 'wcvendors_table_columns_product', array( $this->product_controller, 'table_columns' ) );
+        add_filter( 'wcvendors_table_rows_product', array( $this->product_controller, 'table_rows' ), 10, 2 );
+        add_filter( 'wcvendors_table_action_column_product', array( $this->product_controller, 'table_action_column' ) );
+        add_filter( 'wcvendors_table_before_product', array( $this->product_controller, 'table_actions' ), 10, 2 );
+        add_filter( 'wcvendors_table_after_product', array( $this->product_controller, 'table_actions' ), 10, 2 );
+        add_filter( 'wcvendors_table_post_per_page_product', array( $this->product_controller, 'table_posts_per_page' ) );
+        add_filter( 'wcvendors_table_no_data_notice_product', array( $this->product_controller, 'table_no_data_notice' ) );
+        add_filter( 'wcvendors_product_form_templates', array( $this->product_controller, 'template_overrides_options' ) );
+        add_filter( 'wcv_product_table_row_actions', array( $this->product_controller, 'maybe_disable_actions' ), 10, 2 );
+        add_filter( 'wcvendors_page_disabled', array( $this->product_controller, 'maybe_disable_page' ), 10, 2 );
+
+        // Orders controller.
+        add_filter( 'wcvendors_table_columns_order', array( $this->order_controller, 'table_columns' ) );
+        add_filter( 'wcvendors_table_rows_order', array( $this->order_controller, 'table_rows' ), 10, 2 );
+        add_filter( 'wcvendors_table_action_column_order', array( $this->order_controller, 'table_action_column' ) );
+        add_filter( 'wcvendors_table_before_order', array( $this->order_controller, 'table_actions' ) );
+        add_filter( 'wcvendors_table_after_order', array( $this->order_controller, 'table_actions_after' ) );
+        add_filter( 'wcvendors_table_no_data_notice_order', array( $this->order_controller, 'table_no_data_notice' ) );
+        add_action( 'template_redirect', array( $this->order_controller, 'process_submit' ) );
+        add_action( 'template_redirect', array( $this, 'wc_filter_address_hook' ) );
+        add_filter( 'woocommerce_order_item_get_formatted_meta_data', array( $this->order_controller, 'filter_order_item_get_formatted_meta_data' ), 10 );
+
+        // Vendor controller.
+        add_action( 'wp_ajax_wcv_json_unique_store_name', array( $this->vendor_controller, 'json_unique_store_name' ) );
+        add_action( 'template_redirect', array( $this->vendor_controller, 'process_submit' ) );
+        add_filter( 'woocommerce_login_redirect', array( $this->vendor_controller, 'vendor_login_redirect' ), 10, 2 );
+        add_action( 'wp_ajax_wcv_dismiss_store_setup_step_section', array( $this->vendor_controller, 'dismiss_store_setup_step_section' ) );
+    }
+
+    /**
+     * Filter the WooCommerce shipping and billing addresses on the pro dashboard to show and hide options
+     *
+     * @since   2.5.2
+     * @version 2.5.2
+     */
+    public function wc_filter_address_hook() {
+
+        $dashboard_page_ids = (array) get_option( 'wcvendors_vendor_dashboard_page_id', array() );
+
+        foreach ( $dashboard_page_ids as $dashboard_page_id ) {
+            if ( isset( $dashboard_page_id ) ) {
+                // Dashboard page or the shipping label page.
+                if ( is_page( $dashboard_page_id ) || ( isset( $_GET['wcv_shipping_label'] ) ) ) { // phpcs:ignore
+                    add_filter(
+                        'woocommerce_order_formatted_shipping_address',
+                        array(
+                            $this->order_controller,
+                            'filter_formatted_shipping_address',
+                        )
+                    );
+                    add_filter(
+                        'woocommerce_order_formatted_billing_address',
+                        array(
+                            $this->order_controller,
+                            'filter_formatted_billing_address',
+                        )
+                    );
+                }
+            }
+        }
     }
 }

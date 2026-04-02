@@ -195,7 +195,7 @@ function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == 
             type_elm = $(this).attr('type'),
             value_elm = $(this).val(),
             count = 10,
-            ti_merge_value = function ti_merge_value(o1, o2) {
+            _ti_merge_value = function ti_merge_value(o1, o2) {
               if ('object' === _typeof(o2)) {
                 if ('undefined' === typeof o1) {
                   o1 = {};
@@ -207,9 +207,9 @@ function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == 
                       j = j;
                     }
                     j = parseInt(j) + 1;
-                    o1[j] = ti_merge_value(o1[i], o2[i]);
+                    o1[j] = _ti_merge_value(o1[i], o2[i]);
                   } else {
-                    o1[i] = ti_merge_value(o1[i], o2[i]);
+                    o1[i] = _ti_merge_value(o1[i], o2[i]);
                   }
                 }
                 return o1;
@@ -241,10 +241,10 @@ function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == 
               if (!value_elm.length && 'object' !== _typeof(value_elm)) {
                 value_elm = true;
               }
-              data.form[name_elm] = ti_merge_value(data.form[name_elm], value_elm);
+              data.form[name_elm] = _ti_merge_value(data.form[name_elm], value_elm);
             }
           } else {
-            data.form[name_elm] = ti_merge_value(data.form[name_elm], value_elm);
+            data.form[name_elm] = _ti_merge_value(data.form[name_elm], value_elm);
           }
           if ('hidden' === type_elm) {
             hiddenFields.push(name_elm);

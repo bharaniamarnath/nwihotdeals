@@ -23,7 +23,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-require WPFORMS_PLUGIN_DIR . 'assets/css/emails/partials/classic_media_queries.css';
+$min = wpforms_get_min_suffix();
+
+require WPFORMS_PLUGIN_DIR . "assets/css/emails/partials/classic_media_queries{$min}.css";
 
 // Reuse border-color.
 $border_color_dark = wpforms_generate_contrasting_color( $email_text_color_dark, 86, 72 );
@@ -62,7 +64,8 @@ $border_color_dark = wpforms_generate_contrasting_color( $email_text_color_dark,
 		color: <?php echo sanitize_hex_color( $email_links_color_dark ); ?> !important;
 	}
 
-	.content .field-value {
+	.content .field-value,
+	.wpforms-layout-table > td {
 		border-bottom: 1px solid <?php echo sanitize_hex_color( $border_color_dark ); ?> !important;
 	}
 

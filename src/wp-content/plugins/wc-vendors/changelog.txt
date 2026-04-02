@@ -1,5 +1,244 @@
 Changelog for WC Vendors Marketplace
 
+Version 2.6.7 - 10th March 2026
+
+* Feature: Scheduled automated emails to vendors when a product is out of stock
+* Improvement: Remove cart and checkout blocks notice
+* Improvement: Make the menu bar sticky and add a scroll to top button
+* Improvement: WC cart/checkout blocks compatibility
+* Bug Fix: Vendors cannot create new tags
+* Bug Fix: Allow HTML in vendor shop description, stripping HTML content
+* Bug Fix: Empty categories do not appear in product add/edit form for checklist category display
+* Bug Fix: Date filter timezone mismatch on vendor dashboard
+
+Version 2.6.6 - 10th February 2026
+
+ * Feature: AI-powered product moderation and review system
+ * Bug Fix: Cannot close the new vendor setup wizard
+ * Bug Fix: Vendor shop name can be empty in backend, causing broken vendor link
+ * Bug Fix: Vendor product auto-published despite publish approval being disabled due to Trusted Vendor feature
+ * Bug Fix: Missing validation for date range on vendor reports page
+ * Bug Fix: Vendors can still edit products when allow vendors to add/edit products is disabled
+ * Bug Fix: SKU and taxes still show on variable product when Hide SKU & Taxes feature for vendors is enabled
+ * Bug Fix: Commission field does not accept decimal value when comma is used as decimal separator in WooCommerce
+ * Bug Fix: Adding tracking number does not override previous unshipped status message
+ * Bug Fix: Cross-sell and up-sell products not saving in vendor dashboard
+ * Bug Fix: Issues with vendor registration, approval, and denial emails
+
+Version 2.6.5 - 17th December 2025
+
+ * Feature: Introduce hooks for WC Vendors signup.
+ * Improvement: Add a "This Month" filter option and set it as the default for the WC Vendors admin dashboard reports.
+ * Bug Fix: Resolve code quality issues found during plugin checks.
+
+Version 2.6.4.1 - 3rd December 2025
+
+ * Bug Fix: Fatal error while deactivating WooCommerce immediately
+ * Bug Fix: Security issues
+ * Security Fix: Prevent unauthorized vendor order access
+
+Version 2.6.4 - 14th November 2025
+
+ * Feature: Option to write a custom message in vendor denial/approval emails per vendor
+ * Feature: Dashboard cross-promo box with 1-click install
+ * Improvement: Add SaveTo Wishlist Lite for WooCommerce to the About page
+ * Improvement: Update the Select2 script handle to resolve the WooCommerce 10.3.0+ deprecation warning
+ * Improvement: Add a parameter to display product categories in the Products by Vendor shortcode
+ * Bug Fix: Remove PayPal Adaptive Payments and fix the test gateway crash
+ * Bug Fix: Auction downloadable missing general tab/option to upload files
+ * Bug Fix: Theme overrides not applied for certain dashboard templates due to the wrong path in the controller
+ * Bug Fix: Incorrect refund detection when handling partial refunds per vendor
+
+Version 2.6.3 - 13th October 2025
+
+ * Feature: Add vendor detail modal for admin to review pending vendors on the All Vendors page
+ * Improvement: Support username and user ID in the "vendor" parameter of the products by vendor shortcodes
+ * Improvement: Add parameter to limit the number of displayed products without pagination via shortcodes
+ * Improvement: Hide vendor shipping feature in free version
+ * Improvement: Clarify single product header dependency on shop header
+ * Bug Fix: Vendors and admins receive duplicate emails on new vendor application
+ * Bug Fix: Admin notification emails for vendor applications are not sent when site language is not English
+
+Version 2.6.2 - 26th September 2025
+
+ * Feature: Group subcategories under parent categories in category filter dropdown
+ * Improvement: Enhanced admin setting field custom attributes rendering
+ * Bug Fix: WC Vendors overriding RankMath metadata on non-vendor pages (Newsfeed, Forums, Courses)
+ * Bug Fix: Inventory tab disabled in WCVP stays hidden even after deactivating WCVP
+ * Bug Fix: Vendors allowed to create custom tags in Marketplace and Pro
+ * Bug Fix: Zero commissions are not automatically marked as Paid
+ * Bug Fix: Missing Inventory tab for external product type and fixed SKU and tax fields not being hidden properly
+ * Bug Fix: Cancelled status filter missing in vendor dashboard Orders page
+ * Bug Fix: Create Missing Vendor Sub-orders Tool not working properly
+ * Bug Fix: The Add your socials step appears in the onboarding setup progress
+ * Bug Fix: Vendor Product Edit Button links to WP Admin instead of Vendor Dashboard
+
+Version 2.6.1 - 26th August 2025
+
+ * Improvement: Options to allow vendor to review or purchase their own products 
+ * Improvement: Ensure vendor assignment is preserved during partial imports via woocommerce tool
+ * Improvement: Add recommended plugins page to setup wizard
+ * Improvement: Update all vendor page trusted, verified, and untrusted wording
+ * Bug Fix: Google analytics features not applied to all vendor pages when enabled from vendor dashboard
+ * Bug Fix: Extension items not showing on vendor dashboard
+ * Bug Fix: Incorrect Pro label and field restriction for store website, phone, and address in vendor management
+
+
+Version 2.6.0 - 29th July 2025
+
+ * Bug Fix: Vendors should not be able to review their own products
+ * Bug Fix: The Vendor should not be able to purchase their own products
+ * Bug Fix: Hide the Mark Shipped button setting does not apply to order detail view
+ * Bug Fix: Child vendor order date not syncing with parent order
+ * Bug Fix: Vendor singular term not applied to My Account dashboard menu
+ * Bug Fix: Total Discount Coupon displayed in the vendor's new order email instead of the amount per vendor coupon
+
+Version 2.5.9 - 8th July 2025
+
+ * Improvement: Order search functionality for Vendors
+ * Improvement: Separate order status and shipped status in Export Vendor Orders CSV
+ * Bug Fix: Missing text domains in wc-vendors-product-table-row-details.php template strings
+ * Bug Fix: Saving settings of other tabs redirects to the store tab
+ * Bug Fix: Revert to include admin orders and fix marketplace commission calculation
+ * Bug Fix: All products page broken with AIO SEO when language/profile language is Netherlands
+ * Bug Fix: One click setup does not dismiss the setup wizard message from the admin screen
+ * Bug Fix: Orders widget on the Vendor Dashboard ignores customer info visibility settings
+ * Bug Fix: Remove extra line breaks in product titles on Export Vendor Orders CSV
+ * Bug Fix: Store policies content is not saving correctly when using HTML tags from the All Vendors Page
+ * Bug Fix: The marketplace dashboard includes with the admin product order as well
+ * Bug Fix: Lock new/edit product messages not displaying on Vendor Dashboard
+ * Bug Fix: The Vendor singular term option is not applied to the vendor list search placeholder
+ * Bug Fix: Products created with downloadable/virtual template not filtered by WooCommerce Price Widget
+ * Bug Fix: The tax fields and attribute tab still visible to vendors despite settings to hide them
+ * Bug Fix: Remove the incorrect png image file
+
+Version 2.5.8 - 9th June 2025
+
+ * Improvement: Add Patchstack VDP disclaimer to FAQ on readme
+ * Bug Fix: Store description content is not saving correctly when using HTML tags from the admin panel
+ * Bug fix: New orders do not appear on Marketplace Dashboard when dashboard cache is enabled
+ * Bug Fix: General box should hide when Variable product type selected
+ * Bug Fix: Difficulties in Adding Variation Images
+ * Bug Fix: Setup Wizard: Can not click on the Next button on small screen
+
+Version 2.5.7 - 23rd May 2025
+
+ * Improvement: Update language files
+ * Improvement: Vendor dashboard UI
+ * Improvement: Revamp WC Vendors Setup Wizard
+ * Improvement: Add badge count and smooth date range transition on Marketplace Dashboard
+ * Bug Fix: Fatal error on All Vendors Page due to invalid Vendor ID
+ * Bug Fix: Remove user from vendor list if store is inactive
+ * Bug Fix: Missing Product qty field in simple product edit template
+ * Bug Fix: Incorrect Link for Orders and Ratings Buttons on Vendor Dashboard
+ * Bug Fix: Function WC_Order_Data_Store_CPT query was called incorrectly
+ * Bug Fix: Fatal error on Vendor Dashboard – division type mismatch
+ * Bug Fix: Admin reports SQL Injection Vulnerability
+ * Bug Fix: Update Shipping Tracking redirecting to the wrong page
+ * Bug Fix: Product Search not working in Vendor Dashboard
+ * Bug Fix: All Vendors page breaking due to 3rd party plugin database capabilities
+
+Version 2.5.6 - 28th April 2025
+
+ * Feature: Marketplace Admin Dashboard
+ * Improvement: Review Request
+ * Improvement: Marketplace Backend Dashboard optimise
+ * Bug Fix: Undefined Array Key importing
+ * Bug Fix: An uncaught error occurs when all product types are hidden
+ * Bug Fix: Hidden Categories field causes product categories to be removed on save
+ * Bug Fix: Restricted Product Types Still Visible in Dropdown on Vendor Dashboard Product Tab
+ * Bug Fix: Product images translation
+ * Bug Fix: When Gallery display is Disabled it breaks the product editor form
+
+Version 2.5.5.1 - 9th April 2025
+
+ * Improvement: Update WooCommerce version
+
+Version 2.5.5 - 31st March 2025
+
+ * Improvement: Add support multiple select for Vendor Dashboard Product
+ * Improvement: Add view buttons to order section in the vendor dashboard
+ * Bug Fix: When Gallery display is Disabled it breaks the product editor form
+ * Bug Fix: Store Phone Field Flag Displays [Object Object] Text
+ * Bug Fix: Awaiting shipping counter not updating and mismatch with orders report
+ * Bug Fix: Partially refunded order only shows the View Order option
+ * Bug Fix: Vendor Search Failing When Store name has single quote or Apostrophe
+ * Bug Fix: Duplicate Notes Or Shipping Tracking Info After Form Submission and Page Refresh
+ * Bug Fix: Store Settings template override not working as intended
+ * Bug Fix: Email ID conflict
+
+Version 2.5.4.1 - 14th March 2025
+
+ * Bug Fix: Fix the critical error on product edit
+
+Version 2.5.4 - 5th March 2025
+
+ * Improvement: Add Vendor lists shortcode to sort by random
+ * Improvement: Handle New Vendor Progress According to Marketplace Settings
+ * Improvement: Make Dashboard Follow Display Color in WC Vendor Settings
+ * Improvement: Vendor dashboard revamp
+ * Improvement: Make Commission follow WooCommerce Decimal Point Settings
+ * Improvement: The usage tracking: Total vendor should be a weekly total
+ * Improvement: Remove the spacing between the "Sold By Separator" and "Sold By Label"
+ * Improvement: Restrict wp_enqueue_media() from running on every page
+ * Bug Fix: Vendor Dashboard - Orders: The Clear button is not working properly
+ * Bug Fix: Multiple issues with variable products on the new dashboard
+ * Bug Fix: Sales Snapshot View All Orders Link is returning 404
+ * Bug Fix: Hide Downloadable and Virtual option is not removing them from the variable bulk action toggle
+ * Bug Fix: The "Vendor notify denied" email is not sent if the vendor is rejected via the All Vendors page
+ * Bug Fix: All Popup windows on the order page are shrunk on Safari
+ * Bug Fix: Vendors can still view their orders from the Vendor Dashboard when the "View Orders" option is disabled
+ * Bug Fix: The Order Status column displays "No"/"Yes" instead of the correct status in the exported CSV file
+ * Bug Fix: Huge logging of creating sub-orders for deleted vendor
+ * Bug Fix: HTML Editor not working as intended
+ * Bug Fix: The vendor listing search shows duplicate results but does not display anything when searching using the full name
+ * Bug Fix: Not Approved Vendor Showing In Vendor List
+ * Bug Fix: HTML Product Editor Option Breaks Product Form when there are required description fields
+ * Bug Fix: Customer can purchase a product from a deactivated vendor
+ * Bug Fix: Support Candy Integration: Cannot show "Order totals" and "Product totals" charts on the Vendor Dashboard
+ * Bug Fix: Critical error on the vendor product editor when WCV Pro is inactive but "Checklist" was enabled for the "Category Display" option
+ * Bug Fix: Risk on Deleting Variations and Saving Seller Info and Store Description
+ * Bug Fix: The Vendors List doesn't show on the Vendors page
+
+Version 2.5.3 - 17th September 2024
+
+ * Improvement: Implement product count/post count for vendor list shortcode
+ * Improvement: Change the default stock quantity to 1 when the "Manage stock?" option is enabled 
+ * Improvement: Implement product count/post count for vendor list shortcode 
+ * Improvement: Add the {customer_name} placeholder option on the subject and heading of the vendor emails
+ * Bug Fix: Links that have a "_blank" target attribute do not open in a new tab 
+ * Bug Fix: Typographical error on "Vendor singluar term"
+ * Bug Fix: Script tag is shown when a customer is accessing the vendor dashboard page 
+ * Bug Fix: Re-activated stores have missing products 
+ * Bug Fix: Notice: Function WC_Order_Data_Store_CPT::query was called incorrectly 
+ * Bug Fix: Wrong text domain 
+ * Bug Fix: The refunded order is showing up even though the show reversed orders option is disabled
+ * Bug Fix: Vendor Registration Form Redirect is broken
+
+Version 2.5.2 - 23rd August 2024
+
+ * Feature: New Vendor Dashboard
+ * Feature: If a Vendor logs in, redirect them straight to the vendor dashboard
+ * Feature: Allow the admin to specify a permission denied message with a WYSIWYG/block editor
+ * Improvement: Optimize get vendor orders process
+ * Improvement: Add WP CLI tool to remove duplicate sub-orders
+ * Improvement: Readme SEO adjustments
+ * Improvement: Move WC requires and tested up to header to the bottom of plugin header
+ * Bug Fix: Suborders are appearing on third-party
+ * Bug Fix: Payment Settings Fields (as Well as Other Settings Form Fields) Are Not Hidden in Vendor WP Admin Dashboard
+ * Bug Fix: Product variations are not assigned to the vendor
+ * Bug Fix: CSS issue on vendor list template
+ * Bug Fix: WP Editor issue on the All Vendors page
+ * Bug Fix: Shop description still displays if the Pro Header is enabled
+ * Bug Fix: Background Fatal Error on Manually Installing Plugin
+ * Bug Fix: Gets the PHP warning after running the setup wizard
+ * Bug Fix: Admin notice is not working
+ * Bug Fix: Vendor sub-order created twice due to payment failure
+ * Bug Fix: Divi Theme: Inaccessible tabs on the vendor dashboard page
+ * Bug Fix: Unable to input a decimal value on the commission percent field
+ * Bug Fix: Broken links in the setup wizard and usage tracking 
+
+
 Version 2.5.1.1 - 14th June 2024
 
  * Improvement: Only run Javascript/CSS files when viewing WC Vendors settings
@@ -123,7 +362,7 @@ Version 2.4.7.2 - 16th November 2023
 
 * Bug Fix: Insert commission is not working
 
-Verison 2.4.7.1 - 14th November 2023
+Version 2.4.7.1 - 14th November 2023
 
 * Improvement: Declare incompatible with WC Cart/Checkout blocks
 * Improvement: Commissions page security

@@ -5,7 +5,6 @@ namespace WPForms\Admin\Payments\Views;
 use WPForms\Admin\Payments\ScreenOptions;
 use WPForms\Admin\Payments\Views\Overview\Helpers;
 use WPForms\Db\Payments\ValueValidator;
-use WPForms_Field_Layout;
 
 /**
  * Payments Overview Page class.
@@ -161,7 +160,7 @@ class Single implements PaymentsViewsInterface {
 	 *
 	 * @since 1.8.2
 	 */
-	private function setup() { // phpcs:ignore Generic.Metrics.CyclomaticComplexity.TooHigh
+	private function setup() {
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$payment_id = ! empty( $_GET['payment_id'] ) ? absint( $_GET['payment_id'] ) : 0;
@@ -173,7 +172,7 @@ class Single implements PaymentsViewsInterface {
 			return;
 		}
 
-		$this->payment = wpforms()->get( 'payment' )->get( $payment_id );
+		$this->payment = wpforms()->obj( 'payment' )->get( $payment_id );
 
 		// No payment was found.
 		if ( empty( $this->payment ) ) {
@@ -191,15 +190,15 @@ class Single implements PaymentsViewsInterface {
 			return;
 		}
 
-		$this->payment_meta = wpforms()->get( 'payment_meta' )->get_all( $payment_id );
+		$this->payment_meta = wpforms()->obj( 'payment_meta' )->get_all( $payment_id );
 
 		// Retrieve the subscription renewal payments, if applicable.
 		if ( ! empty( $this->payment->subscription_id ) ) {
 			// Assign renewals to reduce queries and reuse later.
-			list( $this->subscription, $this->renewals ) = wpforms()->get( 'payment_queries' )->get_subscription_payment_history( $this->payment->subscription_id, $this->payment->currency );
+			list( $this->subscription, $this->renewals ) = wpforms()->obj( 'payment_queries' )->get_subscription_payment_history( $this->payment->subscription_id, $this->payment->currency );
 
 			if ( ! empty( $this->subscription ) ) {
-				$this->subscription_meta = wpforms()->get( 'payment_meta' )->get_all( $this->subscription->id );
+				$this->subscription_meta = wpforms()->obj( 'payment_meta' )->get_all( $this->subscription->id );
 			}
 		}
 	}
@@ -227,8 +226,8 @@ class Single implements PaymentsViewsInterface {
 			return;
 		}
 
-		$payment_prev = wpforms()->get( 'payment_queries' )->get_prev( $this->payment->id, [ 'mode' => $this->payment->mode ] );
-		$payment_next = wpforms()->get( 'payment_queries' )->get_next( $this->payment->id, [ 'mode' => $this->payment->mode ] );
+		$payment_prev = wpforms()->obj( 'payment_queries' )->get_prev( $this->payment->id, [ 'mode' => $this->payment->mode ] );
+		$payment_next = wpforms()->obj( 'payment_queries' )->get_next( $this->payment->id, [ 'mode' => $this->payment->mode ] );
 		$prev_url     = ! empty( $payment_prev ) ? add_query_arg(
 			[
 				'page'       => 'wpforms-payments',
@@ -250,8 +249,8 @@ class Single implements PaymentsViewsInterface {
 		echo wpforms_render(
 			'admin/payments/single/heading-navigation',
 			[
-				'count'        => (int) wpforms()->get( 'payment_queries' )->count_all( [ 'mode' => $this->payment->mode ] ),
-				'prev_count'   => (int) wpforms()->get( 'payment_queries' )->get_prev_count( $this->payment->id, [ 'mode' => $this->payment->mode ] ),
+				'count'        => (int) wpforms()->obj( 'payment_queries' )->count_all( [ 'mode' => $this->payment->mode ] ),
+				'prev_count'   => (int) wpforms()->obj( 'payment_queries' )->get_prev_count( $this->payment->id, [ 'mode' => $this->payment->mode ] ),
 				'prev_url'     => $prev_url,
 				'prev_class'   => empty( $payment_prev ) ? 'inactive' : '',
 				'next_url'     => $next_url,
@@ -414,7 +413,7 @@ class Single implements PaymentsViewsInterface {
 				'payment_id_raw'      => $this->subscription->id,
 				'status'              => $this->subscription->subscription_status,
 				'status_label'        => ValueValidator::get_allowed_subscription_statuses()[ $this->subscription->subscription_status ],
-				'disabled'            => $this->subscription->subscription_status === 'cancelled',
+				'disabled'            => in_array( $this->subscription->subscription_status, [ 'cancelled', 'completed' ], true ),
 				'stat_cards'          => [
 					'total'   => [
 						'label'          => esc_html__( 'Lifetime Total', 'wpforms-lite' ),
@@ -615,7 +614,7 @@ class Single implements PaymentsViewsInterface {
 	 *
 	 * @return string
 	 */
-	private function get_payment_method() {
+	private function get_payment_method(): string {
 
 		$method = isset( $this->payment_meta['credit_card_method'] ) ? ucfirst( $this->payment_meta['credit_card_method']->value ) : '';
 
@@ -623,7 +622,11 @@ class Single implements PaymentsViewsInterface {
 			return $method;
 		}
 
-		return isset( $this->payment_meta['method_type'] ) ? ucfirst( $this->payment_meta['method_type']->value ) : Helpers::get_placeholder_na_text( false );
+		if ( ! isset( $this->payment_meta['method_type'] ) ) {
+			return Helpers::get_placeholder_na_text( false );
+		}
+
+		return $this->get_formatted_payment_method();
 	}
 
 	/**
@@ -633,34 +636,64 @@ class Single implements PaymentsViewsInterface {
 	 *
 	 * @return string
 	 */
-	private function get_payment_method_details() {
+	private function get_payment_method_details(): string {
 
-		if (
-			! isset( $this->payment_meta['method_type'] ) ||
-			$this->payment_meta['method_type']->value !== 'card' ||
-			empty( $this->payment_meta['credit_card_last4'] ) ||
-			empty( $this->payment_meta['credit_card_expires'] )
-		) {
+		if ( empty( $this->payment_meta['credit_card_last4'] ) ) {
 			return '';
 		}
 
-		$credit_card_last = 'xxxx xxxx xxxx ' . $this->payment_meta['credit_card_last4']->value;
-		$expires_in       = sprintf( /* translators: %s - credit card expiry date. */
-			__( 'Expires %s', 'wpforms-lite' ),
-			$this->payment_meta['credit_card_expires']->value
-		);
+		$rows = [];
 
-		$output = '<div>';
-
-		if ( ! empty( $this->payment_meta['credit_card_name'] ) ) {
-			$output .= '<span>' . esc_html( $this->payment_meta['credit_card_name']->value ) . '</span></br>';
+		// 1. Credit Card Name.
+		if ( ! empty( $this->payment_meta['credit_card_name']->value ) ) {
+			$rows[] = $this->payment_meta['credit_card_name']->value;
 		}
 
-		$output .= '<span>' . esc_html( $credit_card_last ) . '</span></br>';
-		$output .= '<span>' . esc_html( $expires_in ) . '</span>';
-		$output .= '</div>';
+		// 2. Credit Card Last 4 digits.
+		$rows[] = "xxxx xxxx xxxx {$this->payment_meta['credit_card_last4']->value}";
 
-		return $output;
+		// 3. Credit Card Expiry Date.
+		if ( ! empty( $this->payment_meta['credit_card_expires']->value ) ) {
+			$rows[] = sprintf( /* translators: %s - credit card expiry date. */
+				__( 'Expires %s', 'wpforms-lite' ),
+				$this->payment_meta['credit_card_expires']->value
+			);
+		}
+
+		// 4. Payment Method Type.
+		if ( ! empty( $this->payment_meta['method_type']->value ) ) {
+			$rows[] = sprintf( /* translators: %s - credit card expiry date. */
+				__( 'Method: %s', 'wpforms-lite' ),
+				$this->get_formatted_payment_method()
+			);
+		}
+
+		// Escape all rows.
+		$rows = array_map( 'esc_html', $rows );
+		// Wrap each row in a span tag.
+		$output  = '<div><span>';
+		$output .= implode( '</span></br><span>', $rows );
+
+		return $output . '</span></div>';
+	}
+
+	/**
+	 * Retrieves the formatted payment method name.
+	 *
+	 * Converts the payment method type from a stored format (e.g., snake_case or kebab-case)
+	 * into a human-readable string with each word capitalized.
+	 *
+	 * @since 1.10.0
+	 *
+	 * @return string The formatted payment method name.
+	 */
+	private function get_formatted_payment_method(): string {
+
+		$method_type = $this->payment_meta['method_type']->value;
+		$parts       = preg_split( '/[-_]/', $method_type );
+		$parts       = array_map( 'ucfirst', $parts );
+
+		return implode( ' ', $parts );
 	}
 
 	/**
@@ -805,7 +838,7 @@ class Single implements PaymentsViewsInterface {
 
 		// Grab submitted values from the entry if it exists.
 		if ( ! empty( $this->payment->entry_id ) && wpforms()->is_pro() ) {
-			$entry = wpforms()->get( 'entry' )->get( $this->payment->entry_id );
+			$entry = wpforms()->obj( 'entry' )->get( $this->payment->entry_id );
 
 			if ( $entry ) {
 				$fields          = wpforms_decode( $entry->fields );
@@ -834,7 +867,7 @@ class Single implements PaymentsViewsInterface {
 		 */
 		$form_data = apply_filters(
 			'wpforms_admin_payments_views_single_form_data',
-			wpforms()->get( 'form' )->get( $this->payment->form_id, [ 'content_only' => true ] ),
+			wpforms()->obj( 'form' )->get( $this->payment->form_id, [ 'content_only' => true ] ),
 			$fields
 		);
 
@@ -890,7 +923,7 @@ class Single implements PaymentsViewsInterface {
 	 *
 	 * @return array
 	 */
-	private function prepare_entry_fields( $fields, $form_data ) { // phpcs:ignore Generic.Metrics.CyclomaticComplexity.MaxExceeded, Generic.Metrics.CyclomaticComplexity.TooHigh
+	private function prepare_entry_fields( $fields, $form_data ) { // phpcs:ignore Generic.Metrics.CyclomaticComplexity.TooHigh
 
 		if ( empty( $form_data['fields'] ) || empty( $fields ) ) {
 			return [];
@@ -907,8 +940,8 @@ class Single implements PaymentsViewsInterface {
 
 			$field_type = $field_data['type'];
 
-			// Add repeater fields as is.
-			if ( $field_type === 'repeater' && wpforms()->is_pro() ) {
+			// Add repeater and layout fields as is.
+			if ( in_array( $field_type, [ 'repeater', 'layout' ], true ) && wpforms()->is_pro() ) {
 				$prepared_fields[ $key ] = $field_data;
 
 				continue;
@@ -916,7 +949,7 @@ class Single implements PaymentsViewsInterface {
 
 			$field = $fields[ $field_data['id'] ] ?? [];
 
-			if ( empty( $field ) ) {
+			if ( empty( $field ) || ! isset( $field['id'] ) ) {
 				continue;
 			}
 
@@ -945,7 +978,7 @@ class Single implements PaymentsViewsInterface {
 			$is_empty_quantity = isset( $field['quantity'] ) && ! $field['quantity'];
 
 			if ( $is_empty_value ) {
-				$prepared_fields[ $key ]['field_value']  = esc_html__( 'Empty', 'wpforms-lite' );
+				$prepared_fields[ $key ]['field_value'] = esc_html__( 'Empty', 'wpforms-lite' );
 			}
 
 			if ( $is_empty_value || $is_empty_quantity ) {
@@ -1031,7 +1064,7 @@ class Single implements PaymentsViewsInterface {
 		echo wpforms_render(
 			'admin/payments/single/log',
 			[
-				'logs' => wpforms()->get( 'payment_meta' )->get_all_by( 'log', $this->payment->id ),
+				'logs' => wpforms()->obj( 'payment_meta' )->get_all_by( 'log', $this->payment->id ),
 			],
 			true
 		);
@@ -1045,7 +1078,7 @@ class Single implements PaymentsViewsInterface {
 	 *
 	 * @return string
 	 */
-	private function get_gateway_transaction_link() { // phpcs:ignore Generic.Metrics.CyclomaticComplexity.TooHigh
+	private function get_gateway_transaction_link() {
 
 		/**
 		 * Allow to modify a single payment page gateway transaction link.
@@ -1114,13 +1147,14 @@ class Single implements PaymentsViewsInterface {
 			return $link;
 		}
 
+		if ( $this->payment->gateway === 'paypal_commerce' ) {
+			return $this->get_paypal_subscription_link();
+		}
+
 		switch ( $this->payment->gateway ) {
+			case 'square':
 			case 'stripe':
 				$link = 'subscriptions/';
-				break;
-
-			case 'paypal_commerce':
-				$link = 'billing/subscriptions/';
 				break;
 
 			default:
@@ -1133,6 +1167,36 @@ class Single implements PaymentsViewsInterface {
 		}
 
 		return $this->get_gateway_dashboard_link() . $link . $this->payment->subscription_id;
+	}
+
+	/**
+	 * Generates the PayPal subscription link based on payment metadata.
+	 *
+	 * @since 1.10.0
+	 *
+	 * @return string PayPal subscription link.
+	 */
+	private function get_paypal_subscription_link(): string {
+
+		$dashboard = $this->get_gateway_dashboard_link();
+
+		if ( ! isset( $this->payment_meta['processor_type'] ) ) {
+			return $dashboard . 'billing/subscriptions/' . $this->payment->subscription_id;
+		}
+
+		$url = $dashboard . 'unifiedtransactions/';
+
+		if ( empty( $this->payment_meta['payer_email'] ) ) {
+			return $url;
+		}
+
+		return add_query_arg(
+			[
+				'filter' => '1',
+				'query'  => rawurlencode( $this->payment_meta['payer_email']->value ),
+			],
+			$url
+		);
 	}
 
 	/**
@@ -1156,6 +1220,10 @@ class Single implements PaymentsViewsInterface {
 
 		if ( $link ) {
 			return $link;
+		}
+
+		if ( in_array( $this->payment->gateway, [ 'paypal_commerce', 'paypal_standard' ], true ) ) {
+			return $this->get_gateway_dashboard_link() . 'unifiedtransactions/customers/';
 		}
 
 		switch ( $this->payment->gateway ) {
@@ -1186,7 +1254,7 @@ class Single implements PaymentsViewsInterface {
 	 *
 	 * @return string
 	 */
-	private function get_gateway_dashboard_link() { // phpcs:ignore Generic.Metrics.CyclomaticComplexity.MaxExceeded, Generic.Metrics.CyclomaticComplexity.TooHigh
+	private function get_gateway_dashboard_link() { // phpcs:ignore Generic.Metrics.CyclomaticComplexity.TooHigh
 
 		/**
 		 * Allow to modify a single payment page gateway dashboard link.
@@ -1212,7 +1280,7 @@ class Single implements PaymentsViewsInterface {
 
 			case 'paypal_standard':
 			case 'paypal_commerce':
-				$link = $is_test_mode ? 'https://www.sandbox.paypal.com/myaccount/summary/' : 'https://www.paypal.com/myaccount/summary/';
+				$link = $is_test_mode ? 'https://www.sandbox.paypal.com/' : 'https://www.paypal.com/';
 				break;
 
 			case 'authorize_net':
@@ -1220,7 +1288,7 @@ class Single implements PaymentsViewsInterface {
 				break;
 
 			case 'square':
-				$link = $is_test_mode ? 'https://squareupsandbox.com/dashboard/' : 'https://squareup.com/t/cmtp_performance/pr_developers/d_partnerships/p_WPForms/?route=dashboard/';
+				$link = $is_test_mode ? 'https://squareupsandbox.com/dashboard/' : 'https://squareup.com/t/cmtp_performance/pr_developers/d_partnerships/p_0010L00001tJz7nQAC/?route=dashboard/';
 				break;
 
 			default:
@@ -1322,7 +1390,7 @@ class Single implements PaymentsViewsInterface {
 			return '';
 		}
 
-		$form = wpforms()->get( 'form' )->get( $this->payment->form_id );
+		$form = wpforms()->obj( 'form' )->get( $this->payment->form_id );
 
 		// Leave early if form is no longer available.
 		if ( ! $form || $form->post_status !== 'publish' ) {

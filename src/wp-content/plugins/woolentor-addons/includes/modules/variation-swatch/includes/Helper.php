@@ -5,25 +5,6 @@ if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
 
 class Helper{
 
-    private static $_instance = null;
-
-    /**
-     * Instance
-     */
-    public static function instance(){
-        if( is_null( self::$_instance ) ){
-            self::$_instance = new self();
-        }
-        return self::$_instance;
-    }
-
-    /**
-     * Constructor
-     */
-    public function __construct(){
-        
-    }
-
     /**
      * Get global options value.
      *
@@ -78,6 +59,10 @@ class Helper{
         // So convert it to 1
         if( $option_value === 'on' ){
             $option_value = 1;
+        }
+
+        if($option_value === 'off'){
+            $option_value = 0;
         }
 
         return $option_value;
@@ -232,5 +217,3 @@ class Helper{
     }
 
 }
-
-Helper::instance();

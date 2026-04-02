@@ -33,8 +33,30 @@ class WooLentorProductQuery{
             //compatibility with woo shortcode
             add_filter('woocommerce_shortcode_products_query', [ $this, 'woocommerce_shortcode_products_query' ], 99, 3 );
 
+            // compatibility with product grid (Modern)
+            add_filter('woolentor_product_grid_query_settings', [ $this, 'woolentor_grid_products_query' ], 99, 2 );
+
         }
 
+    }
+
+    // Support Product Grid Widget
+    public function woolentor_grid_products_query($query_settings, $settings){
+
+        if( !empty( $query_settings['query_orderby'] ) ){
+            $query_settings['orderby'] = $query_settings['query_orderby'];
+        }else{
+            $query_settings['orderby'] = '';
+        }
+        if( !empty( $query_settings['query_order'] ) ){
+            $query_settings['order'] = $query_settings['query_order'];
+        }else{
+            $query_settings['orderby'] = '';
+        }
+
+
+        $query_settings = $this->woocommerce_shortcode_products_query($query_settings, $settings);
+        return $query_settings;
     }
 
     /**
@@ -46,12 +68,12 @@ class WooLentorProductQuery{
 
         if ( isset( $_GET['wlfilter'] ) ) {
 
-            $queries =[];
-            $new_queries = [];
-            parse_str( $_SERVER['QUERY_STRING' ], $queries );
-            foreach ( $queries as $key => $querie ) {
-                $new_queries[] = $key;
-            }
+            // $queries =[];
+            // $new_queries = [];
+            // parse_str( $_SERVER['QUERY_STRING' ], $queries );
+            // foreach ( $queries as $key => $querie ) {
+            //     $new_queries[] = $key;
+            // }
 
             if( isset( $_GET['wlorder_by'] ) ){
                 if( in_array( $_GET['wlorder_by'], [ '_price', 'total_sales', '_wc_average_rating' ] ) ) {
@@ -151,6 +173,28 @@ class WooLentorProductQuery{
 
             $woo_taxonomies = get_object_taxonomies( 'product' );
 
+
+            // Filter With Currenct taxonomies page filter
+            // if( isset( $_GET['min_price'] ) && isset( $_GET['max_price'] ) ){
+            //     $termobj = get_queried_object();
+            //     $get_all_taxonomies = woolentor_get_taxonomies();
+
+            //     if ( is_shop() || ( is_tax('product_cat') && is_product_category() ) || ( is_tax('product_tag') && is_product_tag() ) || ( isset( $termobj->taxonomy ) && is_tax( $termobj->taxonomy ) && array_key_exists( $termobj->taxonomy, $get_all_taxonomies ) ) ) {
+            //         if(( is_tax('product_cat') && is_product_category() ) || ( is_tax('product_tag') && is_product_tag() )){
+            //             $term_id = $termobj->term_id;
+            //             $tax_query[] = array(
+            //                 array(
+            //                     'taxonomy' => $termobj->taxonomy,
+            //                     'terms' => $term_id,
+            //                     'field' => 'term_id',
+            //                     'include_children' => true
+            //                 )
+            //             );
+            //         }
+            //     }
+            // }
+
+
             $queries =[];
             $new_queries = [];
             parse_str( $_SERVER['QUERY_STRING' ], $queries );
@@ -165,10 +209,11 @@ class WooLentorProductQuery{
                     } else if( 'woolentor' === substr( $key, 0, 9 ) ){
                         $taxonomy = str_replace('woolentor_','',$key);
                     }else{
-                        $taxonomy = "";
+                        $taxonomy = $key;
                     }
 
                     if( ( $taxonomy !== "" ) && in_array( $taxonomy, $woo_taxonomies ) ){
+                        $new_queries[] = $key;
                         $tax_query[] = array(
                             'taxonomy' => $taxonomy,
                             'field' => 'slug',
@@ -180,23 +225,27 @@ class WooLentorProductQuery{
 
             }
 
+            // Set Current taxonomy if no filter with taxonomy
+            if( is_array( $new_queries ) && count($new_queries) == 0 ){
+                $termobj = get_queried_object();
+                $get_all_taxonomies = woolentor_get_taxonomies();
 
-            // $woo_taxonomies = get_object_taxonomies( 'product' );
-            // if( isset( $new_queries[1] ) && !in_array( $new_queries[1], [ 'wlsort', 'wlorder_by' ] ) ){
-            //     $attr_pre_str = substr( $new_queries[1], 0, 6 );
+                if ( is_shop() || ( is_tax('product_cat') && is_product_category() ) || ( is_tax('product_tag') && is_product_tag() ) || ( isset( $termobj->taxonomy ) && is_tax( $termobj->taxonomy ) && array_key_exists( $termobj->taxonomy, $get_all_taxonomies ) ) ) {
+                    if(( is_tax('product_cat') && is_product_category() ) || ( is_tax('product_tag') && is_product_tag() )){
+                        $term_id = $termobj->term_id;
+                        $tax_query[] = array(
+                            array(
+                                'taxonomy' => $termobj->taxonomy,
+                                'terms' => $term_id,
+                                'field' => 'term_id',
+                                'include_children' => true
+                            )
+                        );
+                    }
+                }
+            }
 
-            //     $taxonomy = ( 'filter' === $attr_pre_str ) ? str_replace('filter', 'pa', $new_queries[1] ) : $new_queries[1];
-            //     $taxonomy = ('woolentor' === substr( $taxonomy, 0, 9 ) ) ? str_replace('woolentor_','',$taxonomy) : $taxonomy;
-            //     if( isset( $_GET[$new_queries[1] ] ) && in_array( $taxonomy, $woo_taxonomies ) ){
-            //         $tax_query[] = array(
-            //             'taxonomy' => $taxonomy,
-            //             'field' => 'slug',
-            //             'terms' => explode( ',', $_GET[$new_queries[1]] ),
-            //         );
-            //     }
-
-            // }
-
+            // Featured Product
             if( isset( $_GET['wlorder_by'] ) && $_GET['wlorder_by'] === 'featured' ){
                 $tax_query[] = [
                     'taxonomy' => 'product_visibility',
@@ -207,7 +256,14 @@ class WooLentorProductQuery{
             }           
         }
 
-        if ( !isset( $_GET['wlfilter'] ) ) {
+        // Module Support: Advanced Filter module query, If set Advanced Filter module query then do not apply current taxonomy query
+        $has_advanced_filter = false;
+        if( function_exists('wlpf_get_query_args_prefix') ){
+            $query_string = $_SERVER['QUERY_STRING' ];
+            $has_advanced_filter = is_string($query_string) && strpos($query_string, wlpf_get_query_args_prefix()) === 0;
+        }
+
+        if ( !isset( $_GET['wlfilter'] ) && !$has_advanced_filter ) {
 
             // Taxonomy Taxquery
             $termobj = get_queried_object();
@@ -252,7 +308,7 @@ class WooLentorProductQuery{
     public function get_meta_query(){
         $meta_query = WC()->query->get_meta_query();
 
-        if( isset( $_GET['min_price'] ) || isset( $_GET['max_price'] ) ){
+        if( isset( $_GET['min_price'] ) && isset( $_GET['max_price'] ) ){
             $meta_query = array_merge( array('relation' => 'AND'), $meta_query );
             $meta_query[] = array(
                 [

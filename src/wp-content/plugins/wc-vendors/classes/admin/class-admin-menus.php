@@ -30,14 +30,16 @@ class WCVendors_Admin_Menus {
         // Add menus.
         add_action( 'current_screen', array( $this, 'add_wcv_logo' ), 0 );
         add_action( 'admin_menu', array( $this, 'admin_menu' ) );
-        add_action( 'admin_menu', array( $this, 'commissions_menu' ), 20 );
-        add_action( 'admin_menu', array( $this, 'settings_menu' ), 40 );
-        add_action( 'admin_menu', array( $this, 'extensions_menu' ), 60 );
-        add_action( 'admin_menu', array( $this, 'all_vendors_menu' ), 30 );
+        add_action( 'admin_menu', array( $this, 'marketplace_dashboard_menu' ), 10 );
+        add_action( 'admin_menu', array( $this, 'commissions_menu' ), 30 );
+        add_action( 'admin_menu', array( $this, 'settings_menu' ), 90 );
+        add_action( 'admin_menu', array( $this, 'extensions_menu' ), 50 );
+        add_action( 'admin_menu', array( $this, 'all_vendors_menu' ), 20 );
+        add_action( 'admin_menu', array( $this, 'vendor_product_menu' ), 40 );
         add_action( 'admin_menu', array( $this, 'license_page' ), 70 );
         // Add help page and about page menu items.
         add_action( 'admin_menu', array( $this, 'help_menu' ), 80 );
-        add_action( 'admin_menu', array( $this, 'about_menu' ), 90 );
+        add_action( 'admin_menu', array( $this, 'about_menu' ), 91 );
         if ( ! is_wcv_pro_active() ) {
             add_action( 'admin_menu', array( $this, 'go_pro_menu' ), 100 );
             add_action( 'admin_menu', array( $this, 'pricing_link' ), 100 );
@@ -50,6 +52,42 @@ class WCVendors_Admin_Menus {
 
         add_filter( 'set_screen_option_wcvendor_commissions_perpage', array( __CLASS__, 'set_commissions_screen' ), 10, 3 );
         add_action( 'admin_enqueue_scripts', array( $this, 'admin_enqueue_scripts' ) );
+    }
+
+    /**
+     * Products menu item
+     *
+     * @since 2.6.6
+     * @version 2.6.6
+     * @return void
+     */
+    public function vendor_product_menu() {
+        $pending_products_count = $this->get_pending_products_count();
+        $pending_products_badge = $pending_products_count > 0 ? ' <span class="update-plugins count-' . $pending_products_count . '"><span class="update-count">' . $pending_products_count . '</span></span>' : '';
+
+        add_submenu_page(
+            'wc-vendors',
+            __( 'Products', 'wc-vendors' ),
+            __( 'Products', 'wc-vendors' ) . $pending_products_badge,
+            'manage_woocommerce',
+            'wcv-products',
+            array( $this, 'ai_product_review_page' ),
+        );
+    }
+
+    /**
+     * Vendor product management admin page output
+     *
+     * @since 2.6.6
+     * @version 2.6.6
+     * @return void
+     */
+    public function ai_product_review_page() {
+        echo '<div class="wrap">';
+        echo '<h1 class="wcv-page-title">' . esc_html__( 'Vendor Product Management', 'wc-vendors' ) . '</h1>';
+        echo '<p class="wcv-page-description">' . esc_html__( 'Manage your vendor products', 'wc-vendors' ) . '</p>';
+        echo '<div id="wcv-ai-product-review-root"></div>';
+        echo '</div>';
     }
 
     /**
@@ -68,10 +106,38 @@ class WCVendors_Admin_Menus {
             __( 'WC Vendors', 'wc-vendors' ),
             'manage_woocommerce',
             'wc-vendors',
-            array( $this, 'extensions_page' ),
+            array( $this, 'marketplace_dashboard_page' ),
             'dashicons-cart',
             50
         );
+    }
+
+    /**
+     * Marketplace dashboard page menu item
+     */
+    public function marketplace_dashboard_menu() {
+        $pending_vendors_count = $this->get_pending_vendors_count();
+        $pending_vendors_badge = $pending_vendors_count > 0 ? ' <span class="update-plugins count-' . $pending_vendors_count . '"><span class="update-count">' . $pending_vendors_count . '</span></span>' : '';
+
+        add_submenu_page(
+            'wc-vendors',
+            __( 'Dashboard', 'wc-vendors' ),
+            __( 'Dashboard', 'wc-vendors' ) . $pending_vendors_badge,
+            'manage_woocommerce',
+            'wc-vendors-marketplace-dashboard',
+            array( $this, 'marketplace_dashboard_page' ),
+            10
+        );
+    }
+
+    /**
+     * Dashboard page
+     */
+    public function marketplace_dashboard_page() {
+        echo '<div class="wrap">';
+        echo '<h1 class="wcv-page-title"></h1>';
+        echo '<div id="wcv-marketplace-backend-dashboard-root"></div>';
+        echo '</div>';
     }
 
     /**
@@ -265,6 +331,19 @@ class WCVendors_Admin_Menus {
             font-weight: 700;
             border-left-color: #fff;
             }
+            .wcv-notice-container {
+                margin-right: 0;
+                margin-left: 0;
+                padding-top: 10px !important;
+                padding-bottom: 10px !important;
+            }
+            .wcv-notice-container p {
+                margin-bottom: 0;
+                margin-top: 0;
+            }
+            .toplevel_page_wc-vendors li a[href="admin.php?page=wcv-setup"] {
+                display: none !important;
+            }
         </style>
         <?php
     }
@@ -367,7 +446,7 @@ class WCVendors_Admin_Menus {
     public function add_wcv_logo() {
         $parent         = get_admin_page_parent();
         $hook           = get_current_screen()->id;
-        $exclude_screen = apply_filters( 'wcvendors_exclude_logo_screen', array( 'wc-vendors_page_wcv-go-pro' ) );
+        $exclude_screen = apply_filters( 'wcvendors_exclude_logo_screen', array( 'wc-vendors_page_wcv-go-pro', 'wc-vendors_page_wcv-setup' ) );
         if ( 'wc-vendors' === $parent && ! in_array( $hook, $exclude_screen, true ) ) {
             add_filter( "$hook", array( $this, 'wcv_logo' ), 0 );
         }
@@ -450,15 +529,18 @@ class WCVendors_Admin_Menus {
             'admin-script',
             'wcv_admin_script_params',
             array(
-                'installing_text'        => __( 'Installing...', 'wc-vendors' ),
-                'install_text'           => __( 'Install', 'wc-vendors' ),
-                'installed_text'         => __( 'Installed', 'wc-vendors' ),
-                'install_nonce'          => wp_create_nonce( 'wcv_install_plugin' ),
-                'installed_message'      => __( 'The plugin has been installed and activated.', 'wc-vendors' ),
-                'try_again_text'         => __( 'Try again', 'wc-vendors' ),
-                'switch_cc_blocks_nonce' => wp_create_nonce( 'switch_cc_blocks' ),
-                'activating_text'        => __( 'Activating...', 'wc-vendors' ),
-                'activated_text'         => __( 'Activated', 'wc-vendors' ),
+                'installing_text'               => esc_html__( 'Installing...', 'wc-vendors' ),
+                'install_text'                  => esc_html__( 'Install', 'wc-vendors' ),
+                'installed_text'                => esc_html__( 'Installed', 'wc-vendors' ),
+                'install_nonce'                 => wp_create_nonce( 'wcv_install_plugin' ),
+                'installed_message'             => esc_html__( 'The plugin has been installed and activated.', 'wc-vendors' ),
+                'try_again_text'                => esc_html__( 'Try again', 'wc-vendors' ),
+                'switch_cc_blocks_nonce'        => wp_create_nonce( 'switch_cc_blocks' ),
+                'activating_text'               => esc_html__( 'Activating...', 'wc-vendors' ),
+                'activated_text'                => esc_html__( 'Activated', 'wc-vendors' ),
+                'wc_decimal'                    => wc_get_price_decimal_separator(),
+                'the_number_of_decimals'        => wc_get_price_decimals(),
+                'commission_rate_error_message' => esc_html__( 'Please enter a valid commission rate following the WooCommerce decimal separator and number of decimals.', 'wc-vendors' ),
             )
         );
     }
@@ -558,6 +640,54 @@ class WCVendors_Admin_Menus {
             )
         );
         include WCV_ABSPATH_ADMIN . 'views/html-admin-about-page.php';
+    }
+
+    /**
+     * Get the number of pending vendors awaiting approval
+     *
+     * @since 2.5.7
+     * @version 2.5.7
+     *
+     * @return int The number of pending vendors
+     */
+    public function get_pending_vendors_count() {
+        global $wpdb;
+
+        // Query to get count of pending vendors.
+        $count = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+            $wpdb->prepare(
+                "SELECT COUNT(*) FROM {$wpdb->prefix}users AS users
+                LEFT JOIN {$wpdb->prefix}usermeta AS meta ON users.ID = meta.user_id
+                WHERE meta.meta_key = %s AND meta.meta_value LIKE %s",
+                'wp_capabilities',
+                '%\"pending_vendor\"%'
+            )
+        );
+
+        return absint( $count );
+    }
+
+    /**
+     * Get the number of pending products awaiting approval
+     *
+     * @since 2.6.0
+     * @version 2.6.0
+     *
+     * @return int The number of pending products
+     */
+    public function get_pending_products_count() {
+        global $wpdb;
+
+        // Query to get count of pending products.
+        $count = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+            $wpdb->prepare(
+                "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = %s AND post_status = %s",
+                'product',
+                'pending'
+            )
+        );
+
+        return absint( $count );
     }
 }
 new WCVendors_Admin_Menus();

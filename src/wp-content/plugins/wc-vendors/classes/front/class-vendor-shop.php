@@ -1,5 +1,12 @@
 <?php
-
+/**
+ * WC Vendors Vendor Shop Class
+ *
+ * @version 2.6.5 - Fix security issues.
+ *
+ * @phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
+ */
+use function WC_Vendors\Classes\Includes\wcv_strip_html;
 /**
  * WC Vendors Vendor Shop Class
  *
@@ -60,6 +67,8 @@ class WCV_Vendor_Shop {
             add_action( 'wp_logout', array( $this, 'redirect_after_logout' ), 10 );
             add_filter( 'login_redirect', array( $this, 'change_login_redirect' ), 10, 3 );
         }
+
+        add_action( 'wp_head', array( $this, 'product_seo_meta' ) );
     }
 
     /**
@@ -175,7 +184,7 @@ class WCV_Vendor_Shop {
      */
     public static function shop_description() {
 
-        if ( ! wc_string_to_bool( get_option( 'wcvendors_display_shop_description', 'no' ) ) ) {
+        if ( ! wc_string_to_bool( get_option( 'wcvendors_display_shop_description', 'no' ) ) || is_wcv_pro_active() ) {
             return;
         }
 
@@ -300,7 +309,9 @@ class WCV_Vendor_Shop {
             $vendor           = get_userdata( $vendor_id );
             $vendor_email     = $vendor->user_email;
             $vendor_login     = $vendor->user_login;
-
+            if ( ! wc_string_to_bool( get_option( 'wcvendors_display_shop_description', 'no' ) ) ) {
+                $shop_description = '';
+            }
             do_action_deprecated( 'wcv_before_main_header', array( $vendor_id ), '2.3.0', 'wcvendors_before_main_header' );
             do_action( 'wcvendors_before_main_header', $vendor_id );
 
@@ -350,6 +361,10 @@ class WCV_Vendor_Shop {
             $seller_info      = ( $global_html || $has_html ) ? wpautop( get_user_meta( $vendor_id, 'pv_seller_info', true ) ) : sanitize_text_field( get_user_meta( $vendor_id, 'pv_seller_info', true ) );
             $vendor_email     = $vendor->user_email;
             $vendor_login     = $vendor->user_login;
+
+            if ( ! wc_string_to_bool( get_option( 'wcvendors_display_shop_description', 'no' ) ) ) {
+                $shop_description = '';
+            }
 
             do_action_deprecated( 'wcv_before_mini_header', array( $vendor->ID ), '2.3.0', 'wcvendors_before_mini_header' );
             do_action( 'wcvendors_before_mini_header', $vendor->ID );
@@ -503,5 +518,81 @@ class WCV_Vendor_Shop {
         } else {
             return $redirect_to;
         }
+    }
+
+    /**
+     * Output SEO & OpenGraph meta tags
+     *
+     * @return    void
+     * @since      2.5.2
+     * @version    2.5.2
+     */
+    public function product_seo_meta() {
+
+        global $post;
+
+        if ( is_archive() ) {
+            return;
+        }
+
+        $hide_seo = wc_string_to_bool( get_option( 'wcvendors_hide_product_seo', 'no' ) );
+
+        if ( $hide_seo ) {
+            return;
+        }
+
+        $product = wc_get_product( $post );
+
+        if ( ! is_a( $product, 'WC_Product' ) ) {
+            return;
+        }
+
+        $product_id = $product->get_id();
+
+        $seo_title       = get_post_meta( $product_id, 'wcv_product_seo_title', true );
+        $seo_description = get_post_meta( $product_id, 'wcv_product_seo_description', true );
+        $seo_keywords    = get_post_meta( $product_id, 'wcv_product_seo_keywords', true );
+        $seo_image_url   = get_the_post_thumbnail_url( $post, 'large' );
+
+        $seo_opengraph    = get_post_meta( $product_id, 'wcv_product_seo_opengraph', true );
+        $seo_twitter_card = get_post_meta( $product_id, 'wcv_product_seo_twitter_card', true );
+
+        $seo_store_name     = get_user_meta( $post->post_author, 'pv_shop_name', true );
+        $seo_store_url      = WCV_Vendors::is_vendor( $post->post_author ) ? WCV_Vendors::get_vendor_shop_page( $post->post_author ) : '';
+        $seo_twitter_author = get_user_meta( $post->post_author, '_wcv_twitter_username', true );
+
+        // use categories for keywords if none are defined.
+        if ( '' === $seo_keywords ) {
+            $categories   = get_the_term_list( $product_id, 'product_cat', '', ',', '' );
+            $seo_keywords = wcv_strip_html( $categories );
+        }
+
+        $seo_title       = ! empty( $seo_title ) ? $seo_title : $product->get_name();
+        $seo_description = ! empty( $seo_description ) ? $seo_description : substr( $product->get_description(), 0, apply_filters( 'wcv_seo_description_length', 155 ) );
+
+        $seo_product_amount  = $product->get_price();
+        $seo_currency_code   = get_woocommerce_currency();
+        $seo_currency_symbol = get_woocommerce_currency_symbol( $seo_currency_code );
+
+        wc_get_template(
+            'product-seo-meta.php',
+            array(
+                'product_id'          => $product_id,
+                'seo_title'           => $seo_title,
+                'seo_description'     => $seo_description,
+                'seo_keywords'        => $seo_keywords,
+                'seo_image_url'       => $seo_image_url,
+                'seo_product_amount'  => $seo_product_amount,
+                'seo_currency_code'   => $seo_currency_code,
+                'seo_currency_symbol' => $seo_currency_symbol,
+                'seo_store_name'      => $seo_store_name,
+                'seo_twitter_author'  => $seo_twitter_author,
+                'seo_opengraph'       => $seo_opengraph,
+                'seo_twitter_card'    => $seo_twitter_card,
+                'seo_store_url'       => $seo_store_url,
+            ),
+            'wc-vendors/product/',
+            WCV_TEMPLATE_BASE . 'product/'
+        );
     }
 }

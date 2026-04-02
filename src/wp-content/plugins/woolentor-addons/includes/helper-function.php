@@ -12,6 +12,20 @@ function woolentor_is_woocommerce() {
 }
 
 /**
+ * Get the appropriate script handle based on WooCommerce version
+ *
+ * @param string $old_handle Old handle for WC < 10.3.0
+ * @param string $new_handle New handle for WC >= 10.3.0
+ * @return string The appropriate handle
+ */
+function woolentor_get_wc_script_handle( $old_handle, $new_handle ) {
+    if ( defined( 'WC_VERSION' ) && version_compare( WC_VERSION, '10.3.0', '>=' ) ) {
+        return $new_handle;
+    }
+    return $old_handle;
+}
+
+/**
  * [woolentor_is_pro]
  * @return [boolean]
  */
@@ -86,6 +100,56 @@ function woolentor_build_page_content( $page_id ){
 }
 
 /**
+ * Elementor Widget Upgrade Pro notice manager
+ *
+ * @param [type] $widget
+ * @param [type] $controls_manager
+ * @param [type] $widget_name
+ * @param [type] $option
+ * @param array $condition
+ * @return void
+ */
+function woolentor_upgrade_pro_notice_elementor( $widget, $controls_manager, $widget_name, $option, $condition = [] ) {
+
+    $url = 'https://woolentor.com/pricing/?utm_source=elementor-widget-panel&utm_medium='. $widget_name;
+
+    $control_args = [
+        'raw' => 'This option is available<br> in the <strong><a href="'. esc_url($url) .'" target="_blank" style="color: #93003c;">Pro version</a></strong>.',
+        'type' => $controls_manager,
+        'content_classes' => 'woolentor-pro-notice elementor-panel-alert elementor-panel-alert-info'
+    ];
+
+    if( !empty($condition) ){
+        $control_args['condition'] = [
+            $option => $condition,
+        ];
+    }
+
+    $widget->add_control(
+        $option .'_pro_notice',
+        $control_args
+    );
+}
+
+/**
+ * Get template content by id
+ * @since 2.6.6
+ * @param [type] $template_id
+ * @return string
+ */
+function woolentor_get_template_content_by_id($template_id) {
+    $template_post = get_post( $template_id );
+    
+    // Check if the post exists and its status is 'publish'
+    if ( $template_post && $template_post->post_status === 'publish' ) {
+        return class_exists('\Elementor\Plugin') ? \Elementor\Plugin::instance()->frontend->get_builder_content_for_display( $template_id ) : '';
+    } else {
+        return esc_html__( 'Template not published or does not exist', 'woolentor');
+    }
+}
+
+
+/**
 * Checked Current theme is FSE
 */
 function woolentor_current_theme_is_fse() {
@@ -97,6 +161,54 @@ function woolentor_current_theme_is_fse() {
 	}
 
 	return false;
+}
+
+/**
+ * Get Current Theme Name
+ */
+function woolentor_get_current_theme() {
+    $theme = wp_get_theme();
+    return [ 'name' => $theme->get('Name'), 'slug' => $theme->get_stylesheet() ];
+}
+
+/**
+ * All PHP file include from folder
+ * @param mixed $folder_name
+ * @return void
+ */
+function woolentor_include_all($folder_name){
+    foreach (glob("{$folder_name}/*.php") as $filename){
+        include $filename;
+    }
+}
+
+/**
+ * Single String Translate
+ * @param mixed $name String identifier
+ * @param mixed $value Default value
+ * @param string $context Translation context/group (must match registration context)
+ * @return mixed Translated string or original value
+ */
+function woolentor_translator( $name, $value, $context = 'ShopLentor' ){
+    if( method_exists('\WooLentor\MultiLanguage\Languages','translator') ) {
+        return \WooLentor\MultiLanguage\Languages::translator( $name, $value, $context );
+    }
+    return $value;
+}
+
+/**
+ * Register a string for translation with WPML/Polylang
+ * Must be called before woolentor_translator() can find translations
+ *
+ * @param string $name Unique identifier for the string
+ * @param string $value The default string value to register
+ * @param string $group Group name for organization in translation interface
+ * @return void
+ */
+function woolentor_register_string( $name, $value, $group = 'ShopLentor' ){
+    if( method_exists('\WooLentor\MultiLanguage\Languages','register_string') ) {
+        \WooLentor\MultiLanguage\Languages::register_string( $name, $value, $group );
+    }
 }
 
 /**
@@ -149,7 +261,7 @@ function woolentor_render_icon( $settings = [], $new_icon = 'selected_icon', $ol
 
     } else {
         if ( empty( $attributes['class'] ) ) {
-            $attributes['class'] = $settings[ $old_icon ];
+            $attributes['class'] = !empty( $settings[ $old_icon ] ) ? $settings[ $old_icon ] : '';
         } else {
             if ( is_array( $attributes['class'] ) ) {
                 $attributes['class'][] = $settings[ $old_icon ];
@@ -162,6 +274,73 @@ function woolentor_render_icon( $settings = [], $new_icon = 'selected_icon', $ol
 
     return $output;
  
+}
+
+/**
+* [woolentor_generate_css]
+* @param  [string] $key      
+* @param  [string] $tab      
+* @param  [string] $css_attr 
+* @return [type]  
+*/
+function woolentor_generate_css( $key, $tab, $css_attr, $unit = '', $default = '', $important = '' ){
+    $field_value = !empty( woolentor_get_option( $key, $tab ) ) ? woolentor_get_option( $key, $tab ) : $default;
+
+    if( !empty( $field_value ) ){
+        $css_attr .= ":{$field_value}{$unit}";
+        return $css_attr."{$important};";
+    }else{
+        return false;
+    }
+
+}
+
+/**
+ * [woolentor_dimensions]
+ * @param  [string] $key
+ * @param  [string] $tab
+ * @return [String | Bool]
+ */
+function woolentor_dimensions( $key, $tab, $css_attr, $default = [], $important = '' ){
+    $dimensions = !empty( woolentor_get_option( $key, $tab ) ) ? woolentor_get_option( $key, $tab ) : $default;
+    if( !empty( $dimensions['top'] ) || !empty( $dimensions['right'] ) || !empty( $dimensions['bottom'] ) || !empty( $dimensions['left'] ) ){
+
+        $unit   = ( empty( $dimensions['unit'] ) ? 'px' : $dimensions['unit'] );
+        $top    = ( !empty( $dimensions['top'] ) ? $dimensions['top'] : 0 );
+        $right  = ( !empty( $dimensions['right'] ) ? $dimensions['right'] : 0 );
+        $bottom = ( !empty( $dimensions['bottom'] ) ? $dimensions['bottom'] : 0 );
+        $left   = ( !empty( $dimensions['left'] ) ? $dimensions['left'] : 0 );
+
+        $css_attr .= ":{$top}{$unit} {$right}{$unit} {$bottom}{$unit} {$left}{$unit}";
+        return $css_attr."{$important};";
+        
+    }else{
+        return false;
+    }
+}
+
+/**
+ * [woolentor_css_position]
+ * @param  [string] $key
+ * @param  [string] $tab
+ * @return [String | Bool]
+ */
+function woolentor_css_position( $key, $tab, $css_attr, $default = [], $important = '' ){
+    $dimensions = !empty( woolentor_get_option( $key, $tab ) ) ? woolentor_get_option( $key, $tab ) : $default;
+    if( !empty( $dimensions['top'] ) || !empty( $dimensions['right'] ) || !empty( $dimensions['bottom'] ) || !empty( $dimensions['left'] ) ){
+
+        $unit   = ( empty( $dimensions['unit'] ) ? 'px' : $dimensions['unit'] );
+        $top    = ( !empty( $dimensions['top'] ) ? $dimensions['top'].$unit : ($dimensions['top'] === "" ? "auto" : 0) );
+        $right  = ( !empty( $dimensions['right'] ) ? $dimensions['right'].$unit : ($dimensions['right'] === "" ? "auto" : 0) );
+        $bottom = ( !empty( $dimensions['bottom'] ) ? $dimensions['bottom'].$unit : ($dimensions['bottom'] === "" ? "auto" : 0) );
+        $left   = ( !empty( $dimensions['left'] ) ? $dimensions['left'].$unit : ($dimensions['left'] === "" ? "auto" : 0) );
+
+        $css_attr .= "top:{$top};right:{$right};bottom:{$bottom};left:{$left}";
+        return $css_attr."{$important};";
+        
+    }else{
+        return false;
+    }
 }
 
 /**
@@ -198,10 +377,12 @@ function woolentor_set_views_count( $postid, $posttype ) {
         $products_list[$timestamp] = $postid;
     }else{
         // if the post has already been stored under the cookie
-        if ( ( $key = array_search( $postid, $products_list ) ) == false ) {            
-            $count++;
-            update_post_meta( $postid, $count_key, $count );
-            $products_list[$timestamp] = $postid;
+        if( is_array( $products_list )){
+            if ( ( $key = array_search( $postid, $products_list ) ) == false ) {            
+                $count++;
+                update_post_meta( $postid, $count_key, $count );
+                $products_list[$timestamp] = $postid;
+            }
         }
     }
     setcookie( $cookie_name, serialize( $products_list ), 0, COOKIEPATH, COOKIE_DOMAIN, false, false );
@@ -409,6 +590,47 @@ function woolentor_taxonomy_list( $taxonomy = 'product_cat', $option_value = 'sl
     return $options;
 }
 
+/**
+ * User Role List
+ * @return array
+ */
+function woolentor_user_role_list(){
+    $options = [];
+    $roles = get_editable_roles();
+    if ( ! empty( $roles ) && ! is_wp_error( $roles ) ) {
+        foreach ( $roles as $role_key => $role_value ) {
+            $options[$role_key] = $role_value['name'];
+        }
+    }
+    return $options;
+}
+
+/**
+ * Get User Rule List if get_editable_roles is not working
+ * @return array
+ */
+function woolentor_get_editable_roles(){
+    $all_roles = wp_roles()->roles;
+
+	/**
+	 * Filters the list of editable roles.
+	 *
+	 * @since 2.8.0
+	 *
+	 * @param array[] $all_roles Array of arrays containing role information.
+	 */
+	$editable_roles = apply_filters( 'editable_roles', $all_roles );
+
+    $rule_list = [];
+
+    if ( ! empty( $editable_roles ) && ! is_wp_error( $editable_roles ) ) {
+        foreach ( $editable_roles as $role_key => $role_value ) {
+            $rule_list[$role_key] = $role_value['name'];
+        }
+    }
+    return $rule_list;
+}
+
 /*
  * Get Post Type
  * return array
@@ -438,9 +660,9 @@ function woolentor_get_post_types( $args = [] ) {
  * return array
  */
 function woolentor_post_name( $post_type = 'post', $args = [] ){
-    $options = array();
+    $options = [];
     $options['0'] = __('Select','woolentor');
-    $perpage = !empty( $args['limit'] ) ? $args['limit'] : woolentor_get_option( 'loadproductlimit', 'woolentor_others_tabs', '20' );
+    $perpage = !empty( $args['limit'] ) ? $args['limit'] : 20;
     $all_post = array( 'posts_per_page' => $perpage, 'post_type'=> $post_type );
     $post_terms = get_posts( $all_post );
     if ( ! empty( $post_terms ) && ! is_wp_error( $post_terms ) ){
@@ -448,6 +670,8 @@ function woolentor_post_name( $post_type = 'post', $args = [] ){
             $options[ $term->ID ] = $term->post_title;
         }
         return $options;
+    }else{
+        return [];
     }
 }
 
@@ -456,20 +680,50 @@ function woolentor_post_name( $post_type = 'post', $args = [] ){
  * return array
  */
 function woolentor_elementor_template() {
-    $templates = '';
-    if( class_exists('\Elementor\Plugin') ){
-        $templates = \Elementor\Plugin::instance()->templates_manager->get_source( 'local' )->get_items();
-    }
-    $types = array();
+    $templates = woolentor_get_post_list();
     if ( empty( $templates ) ) {
         $template_lists = [ '0' => __( 'No saved templates found.', 'woolentor' ) ];
     } else {
         $template_lists = [ '0' => __( 'Select Template', 'woolentor' ) ];
         foreach ( $templates as $template ) {
-            $template_lists[ $template['template_id'] ] = $template['title'] . ' (' . $template['type'] . ')';
+            $template_lists[ $template['post_id'] ] = $template['title'] . ' (' . $template['type'] . ')';
         }
     }
     return $template_lists;
+}
+
+/**
+ * Get Post List
+ * return array
+ */
+function woolentor_get_post_list( $args = [] ) {
+
+    $defaults = [
+        'post_type'      => 'elementor_library',
+        'post_status'    => 'publish',
+        'posts_per_page' => -1,
+        'order'          => 'ASC',
+    ];
+
+    $query_args = wp_parse_args( $args, $defaults );
+
+    $all_posts = new \WP_Query( $query_args );
+
+    $templates = [];
+
+    if ( $all_posts->have_posts() ) {
+        foreach ( $all_posts->get_posts() as $post ) {
+            $post = get_post( $post->ID );
+            $tmpType = $query_args['post_type'] == 'elementor_library' ? get_post_meta( $post->ID, '_elementor_template_type', true ) : '';
+            $templates[] = [
+                'post_id' => $post->ID,
+                'title'   => $post->post_title,
+                'type'    => $tmpType,
+            ];
+        }
+    }
+
+    return $templates;
 }
 
 /*
@@ -897,7 +1151,8 @@ function woolentor_get_html_allowed_tags($tag_type = 'title') {
 * Category list
 * return first one
 */
-function woolentor_get_product_category_list( $id = null, $taxonomy = 'product_cat', $limit = 1 ) { 
+function woolentor_get_product_category_list( $id = null, $taxonomy = 'product_cat', $limit = 1 ) {
+    $limit_to_show = apply_filters('woolentor_universer_category_limit', $limit);
     $terms = get_the_terms( $id, $taxonomy );
     $i = 0;
     if ( is_wp_error( $terms ) )
@@ -913,7 +1168,7 @@ function woolentor_get_product_category_list( $id = null, $taxonomy = 'product_c
             return $link;
         }
         echo '<a href="' . esc_url( $link ) . '">' . esc_html($term->name) . '</a>';
-        if( $i == $limit ){
+        if( $i == $limit_to_show ){
             break;
         }else{ continue; }
     }
@@ -985,6 +1240,10 @@ if( class_exists('WooCommerce') ){
 
     /* Custom product badge */
     function woolentor_custom_product_badge( $show = 'yes' ){
+        // If Enable Product Badge Module
+        if( woolentor_get_option( 'enable', 'woolentor_badges_settings', 'off' ) == 'on' ){
+            return;
+        }
         global $product;
         $custom_saleflash_text = get_post_meta( get_the_ID(), '_saleflash_text', true );
         if( $show == 'yes' && is_a( $product, 'WC_Product' ) ){
@@ -1071,12 +1330,22 @@ if( class_exists('WooCommerce') ){
         wc_set_loop_prop( 'total', $total );
         wc_set_loop_prop( 'per_page', $perpage );
         wc_set_loop_prop( 'current_page', $paged );
-        $geargs = array(
-            'total'    => wc_get_loop_prop( 'total' ),
-            'per_page' => wc_get_loop_prop( 'per_page' ),
-            'current'  => wc_get_loop_prop( 'current_page' ),
-        );
-        wc_get_template( 'loop/result-count.php', $geargs );
+
+        if( function_exists('woocommerce_result_count') ){
+            woocommerce_result_count();
+        }else{
+            $default_orderby = apply_filters( 'woocommerce_default_catalog_orderby', get_option( 'woocommerce_default_catalog_orderby', '' ) );
+            // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+            $orderby = isset( $_GET['orderby'] ) ? wc_clean( wp_unslash( $_GET['orderby'] ) ) : $default_orderby;
+            
+            $geargs = array(
+                'total'    => wc_get_loop_prop( 'total' ),
+                'per_page' => wc_get_loop_prop( 'per_page' ),
+                'current'  => wc_get_loop_prop( 'current_page' ),
+                'orderby'  => $orderby,
+            );
+            wc_get_template( 'loop/result-count.php', $geargs );
+        }
     }
 
     // product shorting
@@ -1137,14 +1406,14 @@ if( class_exists('WooCommerce') ){
     }
 
     // Change Product Per page
-    if( woolentor_get_option( 'enablecustomlayout', 'woolentor_woo_template_tabs', 'on' ) == 'on' ){
-        function woolentor_custom_number_of_posts() {
-            $limit = woolentor_get_option( 'shoppageproductlimit', 'woolentor_woo_template_tabs', 2 );
-            $postsperpage = apply_filters( 'product_custom_limit', $limit );
-            return $postsperpage;
-        }
-        add_filter( 'loop_shop_per_page', 'woolentor_custom_number_of_posts' );
-    }
+    // if( woolentor_get_option( 'enablecustomlayout', 'woolentor_woo_template_tabs', 'on' ) == 'on' ){
+    //     function woolentor_custom_number_of_posts() {
+    //         $limit = woolentor_get_option( 'shoppageproductlimit', 'woolentor_woo_template_tabs', 2 );
+    //         $postsperpage = apply_filters( 'product_custom_limit', $limit );
+    //         return $postsperpage;
+    //     }
+    //     add_filter( 'loop_shop_per_page', 'woolentor_custom_number_of_posts', 99 );
+    // }
 
     // Customize rating html
     if( !function_exists('woolentor_wc_get_rating_html') ){
@@ -1156,6 +1425,7 @@ if( class_exists('WooCommerce') ){
             $rating_whole = floor($average);
             $rating_fraction = $average - $rating_whole;
             $flug = 0;
+            $percentage = (($average / 5) * 100);
 
             $icon_svg = get_option('elementor_experiment-e_font_icon_svg','default');
             $icon_prefix = ( $icon_svg == 'active' || $block == 'yes' ) ? 'fa' : 'fas';
@@ -1168,7 +1438,7 @@ if( class_exists('WooCommerce') ){
                     <span class="ht-product-ratting">
                         <span class="ht-product-user-ratting">
                             <?php for($i = 1; $i <= 5; $i++){
-                                if( $i <= $rating_whole ){
+                                if($i <= $rating_whole || $percentage > 90){
                                     echo '<i class="'.esc_attr($icon_prefix).' fa-star"></i>';
                                 } else {
                                     if( $rating_fraction > 0 && $flug == 0 ){
@@ -1198,6 +1468,49 @@ if( class_exists('WooCommerce') ){
 
                 return $html;
         }
+    }
+
+    // Geneate product rating
+    function woolentor_wc_product_rating_generate( $product_obj = null ){
+        if ( get_option( 'woocommerce_enable_review_rating' ) === 'no' ) { return; }
+
+            if( $product_obj == null ){
+                global $product;
+                $product_obj = $product;
+            }
+
+            if ( $product_obj && is_a( $product_obj, 'WC_Product' ) ) {
+
+                $rating_count = $product_obj->get_rating_count();
+                $average      = $product_obj->get_average_rating();
+                $rating_whole = floor($average);
+                $rating_fraction = $average - $rating_whole;
+                $flug = 0;
+                $percentage = (($average / 5) * 100);
+
+                $html = '';
+
+                if ( $rating_count > 0 ) {
+                    ob_start();
+                    for($i = 1; $i <= 5; $i++){
+                        if( $i <= $rating_whole || $percentage > 90 ){
+                            echo '<svg class="star" viewBox="0 0 20 20"><path fill="currentColor" d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>';
+                        } else {
+                            if( $rating_fraction > 0 && $flug == 0 ){
+                                echo '<svg class="star empty-half" viewBox="0 0 576 512"><path fill="currentColor" d="M288.1 353.6c10 0 19.9 2.3 29 7l74.4 37.9l-13-82.5c-3.2-20.2 3.5-40.7 17.9-55.2l59-59.1l-82.5-13.1c-20.2-3.2-37.7-15.9-47-34.1l-38-74.4v273.6zM457.4 489c-7.3 5.3-17 6.1-25 2l-144.3-73.4L143.8 491c-8 4.1-17.7 3.3-25-2s-11-14.2-9.6-23.2l25.2-159.9L20 191.4c-6.4-6.4-8.6-15.8-5.8-24.4s10.1-14.9 19.1-16.3l159.9-25.4l73.6-144.2c4.1-8 12.4-13.1 21.4-13.1s17.3 5.1 21.4 13.1L383 125.3l159.9 25.4c8.9 1.4 16.3 7.7 19.1 16.3s.5 18-5.8 24.4L441.7 305.9L467 465.8c1.4 8.9-2.3 17.9-9.6 23.2"/></svg>';
+                                $flug = 1;
+                            } else {
+                                echo '<svg class="star empty" viewBox="0 0 20 20"><path fill="currentColor" d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>';
+                            }
+                        }
+                    }
+                    $html = ob_get_clean();
+                }
+
+                return $html;
+
+            }
+
     }
 
     // HTML Markup Render in footer
@@ -1255,12 +1568,22 @@ if( class_exists('WooCommerce') ){
         $value_max = wp_cache_get( $value_max_cache_key );
 
         if ( false === $value_min ) {
-            $value_min = $wpdb->get_var( $wpdb->prepare( "SELECT MIN( CAST( meta_value as UNSIGNED ) ) FROM {$wpdb->postmeta} WHERE meta_key = %s", '_price' ) );
+            $value_min = $wpdb->get_var( $wpdb->prepare( "SELECT MIN( CAST( meta_value AS DECIMAL(10, 2) ) ) 
+                FROM {$wpdb->postmeta} 
+                WHERE meta_key = %s 
+                AND meta_value REGEXP '^[0-9]+(\.[0-9]+)?$'", 
+                '_price' 
+            ));
             wp_cache_set( $value_min_cache_key, $value_min );
         }
 
         if ( false === $value_max ) {
-            $value_max = $wpdb->get_var( $wpdb->prepare( "SELECT MAX( CAST( meta_value as UNSIGNED ) ) FROM {$wpdb->postmeta} WHERE meta_key = %s", '_price' ) );
+            $value_max = $wpdb->get_var( $wpdb->prepare( "SELECT MAX( CAST( meta_value AS DECIMAL(10, 2) ) ) 
+                FROM {$wpdb->postmeta} 
+                WHERE meta_key = %s 
+                AND meta_value REGEXP '^[0-9]+(\.[0-9]+)?$'", 
+                '_price' 
+            ));
             wp_cache_set( $value_max_cache_key, $value_max );
         }
 
@@ -1268,6 +1591,31 @@ if( class_exists('WooCommerce') ){
             'min' => (int)$value_min,
             'max' => (int)$value_max,
         ];
+    }
+
+     /**
+     * Product Hover Image For Universal all addon and any addon if need.
+     *
+     * @return void
+     */
+    function woolentor_product_secondary_image($gallery_images_ids, $image_size) {
+
+		$hover_image_id = '';
+        if( !empty( $gallery_images_ids[0] ) ){
+            $hover_image_id = $gallery_images_ids[0];
+        }
+
+        if ( $hover_image_id != '' ) {
+            $img = wp_get_attachment_image( $hover_image_id, $image_size );
+            ?>
+                <div class="woolentor-product-secondary-img">
+                    <a href="<?php echo esc_url( get_permalink() ); ?>">
+                        <?php echo wp_kses_post($img); ?>
+                    </a>
+                </div>
+            <?php
+        }
+
     }
 
 }
@@ -1317,11 +1665,23 @@ function woolentor_order_by_opts() {
 }
 
 /**
+ * [woolentor_exist_quick_checkout]
+ * @return [bool]
+ */
+function woolentor_exist_quick_checkout(){
+    if( woolentor_get_option( 'enable', 'woolentor_quick_checkout_settings', 'off' ) == 'on' ){
+        return true;
+    }else{
+        return false;
+    }
+}
+
+/**
  * [woolentor_exist_compare_plugin]
  * @return [bool]
  */
 function woolentor_exist_compare_plugin(){
-    if( class_exists('Ever_Compare') || class_exists('Woolentor_Ever_Compare') ){
+    if( class_exists('Ever_Compare') || class_exists('\EverCompare\Frontend\Manage_Compare') ){
         return true;
     }elseif( class_exists('YITH_Woocompare') ){
         return true;
@@ -1352,7 +1712,7 @@ function woolentor_compare_button( $button_arg = array() ){
     $button_text        = !empty( $button_arg['btn_text'] ) ? $button_arg['btn_text'] : esc_html__('Add to Compare','woolentor');
     $button_added_text  = !empty( $button_arg['btn_added_txt'] ) ? $button_arg['btn_added_txt'] : esc_html__( 'Product Added','woolentor' );
 
-    if( class_exists('Ever_Compare') || class_exists('Woolentor_Ever_Compare') ){
+    if( class_exists('Ever_Compare') || class_exists('\EverCompare\Frontend\Manage_Compare') ){
 
         if( !empty( $button_arg['btn_text_type'] ) && $button_arg['btn_text_type'] === 'text'){
             $button_text        = woolentor_get_option( 'button_text','ever_compare_settings_tabs', 'Compare' );
@@ -1387,7 +1747,7 @@ function woolentor_compare_button( $button_arg = array() ){
  * @return [bool]
  */
 function woolentor_has_wishlist_plugin(){
-    if( class_exists('WishSuite_Base') || class_exists('Woolentor_WishSuite_Base') ){
+    if( class_exists('WishSuite_Base') || class_exists('\WishSuite\Frontend\Manage_Wishlist') ){
         return true;
     }elseif( class_exists('YITH_WCWL') ){
         return true;
@@ -1414,7 +1774,7 @@ function woolentor_add_to_wishlist_button( $normalicon = '<i class="fa fa-heart-
 
     $output = '';
 
-    if( class_exists('WishSuite_Base') || class_exists('Woolentor_WishSuite_Base') ){
+    if( class_exists('WishSuite_Base') || class_exists('\WishSuite\Frontend\Manage_Wishlist') ){
 
         $button_class = ' wishlist'.( $tooltip == 'yes' ? '' : ' wltooltip_no' );
 
@@ -1444,7 +1804,7 @@ function woolentor_add_to_wishlist_button( $normalicon = '<i class="fa fa-heart-
             global $yith_wcwl;
             $url          = YITH_WCWL()->get_wishlist_url();
             $product_type = $product->get_type();
-            $exists       = $yith_wcwl->is_product_in_wishlist( $product->get_id() );
+            $exists       = class_exists('YITH_WCWL_Wishlists') ? yith_wcwl_wishlists()->is_product_in_wishlist( $product->get_id() ) : $yith_wcwl->is_product_in_wishlist( $product->get_id() );
             $classes      = 'class="add_to_wishlist"';
             $add          = get_option( 'yith_wcwl_add_to_wishlist_text' );
             $browse       = get_option( 'yith_wcwl_browse_wishlist_text' );
@@ -1471,6 +1831,26 @@ function woolentor_add_to_wishlist_button( $normalicon = '<i class="fa fa-heart-
 
 }
 
+/**
+ * [woolentor_has_quickview]
+ * @return [bool]
+ */
+function woolentor_has_quickview(){
+    // $status = woolentor_get_option( 'enable', 'woolentor_quickview_settings', 'on' );
+    // if( $status == 'on' ){
+    //     return true;
+    // }else{
+    //     return apply_filters('woolentor_has_quickview', false);
+    // }
+    
+    if( class_exists('\Woolentor\Modules\QuickView\Frontend\Button_Manager') ){
+        return true;
+    }else{
+        return apply_filters('woolentor_has_quickview', false);
+    }
+
+}
+
 /*
 * Ajax login Action
 */
@@ -1493,9 +1873,9 @@ function woolentor_ajax_login(){
     $all_notices = wc_print_notices( true );
 
     wp_send_json_success(
-        array(
+        [
             'notices' => $all_notices,
-        )
+        ]
     );
 
     wp_die();
@@ -1629,7 +2009,7 @@ if( !function_exists('woolentor_block_filter_generate_term_link') ){
             $filter_name = 'filter_' . wc_attribute_taxonomy_slug( $filter_type );
         }
 
-        if( $filter_name === 'product_cat' || $filter_name === 'product_tag' ){
+        if( $filter_name === 'product_cat' || $filter_name === 'product_tag' || $filter_name === 'product_brand'){
             $filter_name = 'woolentor_'.$filter_name;
         }
 

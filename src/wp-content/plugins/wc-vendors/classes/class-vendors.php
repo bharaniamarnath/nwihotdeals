@@ -6,7 +6,8 @@
  * @author  Matt Gates <http://mgates.me>, WC Vendors <http://wcvendors.com>
  * @package WCVendors
  *
- * @version 2.4.8
+ * @since    2.4.8
+ * @version  2.6.5 Fix security issues.
  */
 
 /**
@@ -16,23 +17,34 @@
  * @since   2.4.8 - HPOS Compatibility
  */
 class WCV_Vendors {
+
     /**
      * Constructor
      *
+     * @since 2.6.7 Added comments for better clarity on hook purposes.
      * @since 2.4.8 Added hook to create child orders via API.
      */
     public function __construct() {
+        // Classic checkout (shortcode-based).
         add_action( 'woocommerce_checkout_order_processed', array( __CLASS__, 'create_child_orders' ), 10, 1 );
+
+        // Admin-created orders (manual order creation).
         add_action( 'woocommerce_new_order', array( __CLASS__, 'admin_create_child_orders' ), 10, 1 );
+
+        // Cart and Checkout Blocks (Store API).
+        add_action( 'woocommerce_store_api_checkout_order_processed', array( __CLASS__, 'create_child_orders' ), 10, 1 );
+
+        // REST API orders.
         add_action( 'woocommerce_rest_insert_shop_order_object', array( __CLASS__, 'create_child_orders_api' ), 10, 1 );
+
         add_filter( 'woocommerce_order_data_store_cpt_get_orders_query', array( $this, 'cpt_order_query_vars' ), 10, 2 );
-        add_filter( 'woocommerce_order_query_args', array( $this, 'order_query_args' ), 10 );
         add_filter( 'init', array( $this, 'add_rewrite_rules' ), 0 );
 
         add_action( 'rest_api_init', array( $this, 'register_rest_fields' ) );
         add_action( 'woocommerce_order_status_changed', array( $this, 'update_sub_order_status' ), 10, 3 );
 
         if ( wcv_cot_enabled() ) {
+            add_filter( 'woocommerce_order_query_args', array( $this, 'order_query_args' ), 10 ); // Only HPOS support meta_query.
             add_action( 'woocommerce_delete_order', array( $this, 'delete_child_orders' ), 10, 1 );
             add_action( 'woocommerce_trash_order', array( $this, 'trash_sub_orders' ), 10 );
             add_action( 'woocommerce_untrash_order', array( $this, 'untrash_sub_orders' ), 10, 2 );
@@ -43,6 +55,10 @@ class WCV_Vendors {
         }
 
         $this->add_filters_to_prevent_email_sending();
+
+        // Update vendor approved date.
+        add_action( 'remove_user_role', array( $this, 'remove_vendor_date_meta' ), 10, 2 );
+        add_action( 'add_user_role', array( $this, 'update_vendor_date_meta' ), 10, 2 );
     }
 
     /**
@@ -166,7 +182,7 @@ class WCV_Vendors {
      * @param WC_Order $order The order object.
      *
      * @return array|WP_Error $vendors Array of vendor details or WP_Error if invalid order.
-     * @version 2.0.0
+     * @version  2.6.5 Corrected text domain.
      * @since   2.4.8 - Added HPOS Compatibility.
      */
     public static function get_vendors_from_order( $order ) {
@@ -176,7 +192,7 @@ class WCV_Vendors {
         if ( ! is_a( $order, 'WC_Order' ) ) {
             return new WP_Error(
                 'invalid_order',
-                __( 'Cannot get vendors from an invalid order object.', 'wcvendors' )
+                __( 'Cannot get vendors from an invalid order object.', 'wc-vendors' )
             );
         }
 
@@ -191,6 +207,13 @@ class WCV_Vendors {
                 }
 
                 $product_id = ! empty( $order_item->get_variation_id() ) ? $order_item->get_variation_id() : $order_item->get_product_id();
+
+                // Check if product exists.
+                $product = wc_get_product( $product_id );
+
+                if ( ! $product instanceof \WC_Product ) {
+                    continue;
+                }
 
                 $vendor_id = self::get_vendor_from_product( $product_id );
 
@@ -323,24 +346,24 @@ class WCV_Vendors {
 
             if ( $is_vendor ) {
 
-                $shipping_given += $give_shipping ? $shipping : 0;
-                $tax_given      += $give_tax ? $total_tax : 0;
+                $shipping_given += $give_shipping ? (float) $shipping : 0;
+                $tax_given      += $give_tax ? (float) $total_tax : 0;
 
                 $give  = 0;
-                $give += ! empty( $receiver[ $author ]['total'] ) ? $receiver[ $author ]['total'] : 0;
-                $give += $give_shipping ? $shipping : 0;
-                $give += $commission;
-                $give += $give_tax ? $total_tax : 0;
+                $give += ! empty( $receiver[ $author ]['total'] ) ? (float) $receiver[ $author ]['total'] : 0;
+                $give += $give_shipping ? (float) $shipping : 0;
+                $give += (float) $commission;
+                $give += $give_tax ? (float) $total_tax : 0;
 
                 if ( $group ) {
 
                     $receiver[ $author ] = array(
                         'vendor_id'  => (int) $author,
-                        'commission' => ! empty( $receiver[ $author ]['commission'] ) ? $receiver[ $author ]['commission'] + $commission : $commission,
-                        'shipping'   => $give_shipping ? ( ! empty( $receiver[ $author ]['shipping'] ) ? $receiver[ $author ]['shipping'] + $shipping : $shipping ) : 0,
-                        'tax'        => $give_tax ? ( ! empty( $receiver[ $author ]['tax'] ) ? $receiver[ $author ]['tax'] + $total_tax : $total_tax ) : 0,
-                        'qty'        => ! empty( $receiver[ $author ]['qty'] ) ? $receiver[ $author ]['qty'] + $order_item['qty'] : $order_item['qty'],
-                        'total'      => $give,
+                        'commission' => ! empty( $receiver[ $author ]['commission'] ) ? (float) $receiver[ $author ]['commission'] + (float) $commission : (float) $commission,
+                        'shipping'   => $give_shipping ? ( ! empty( $receiver[ $author ]['shipping'] ) ? (float) $receiver[ $author ]['shipping'] + (float) $shipping : (float) $shipping ) : 0,
+                        'tax'        => $give_tax ? ( ! empty( $receiver[ $author ]['tax'] ) ? (float) $receiver[ $author ]['tax'] + (float) $total_tax : (float) $total_tax ) : 0,
+                        'qty'        => ! empty( $receiver[ $author ]['qty'] ) ? (int) $receiver[ $author ]['qty'] + (int) $order_item['qty'] : (int) $order_item['qty'],
+                        'total'      => (float) $give,
                     );
 
                 } else {
@@ -348,58 +371,58 @@ class WCV_Vendors {
                     $receiver[ $author ][ $key ] = array(
                         'vendor_id'  => (int) $author,
                         'product_id' => $product_id,
-                        'commission' => $commission,
-                        'shipping'   => $give_shipping ? $shipping : 0,
-                        'tax'        => $give_tax ? $total_tax : 0,
-                        'qty'        => $order_item['qty'],
-                        'total'      => ( $give_shipping ? $shipping : 0 ) + $commission + ( $give_tax ? $total_tax : 0 ),
+                        'commission' => (float) $commission,
+                        'shipping'   => $give_shipping ? (float) $shipping : 0,
+                        'tax'        => $give_tax ? (float) $total_tax : 0,
+                        'qty'        => (int) $order_item['qty'],
+                        'total'      => ( $give_shipping ? (float) $shipping : 0 ) + (float) $commission + ( $give_tax ? (float) $total_tax : 0 ),
                     );
 
                 }
             }
 
-            $admin_comm = $order_item['line_subtotal'] - $commission;
+            $admin_comm = (float) $order_item['line_subtotal'] - (float) $commission;
 
             if ( $group ) {
                 $receiver[1] = array(
                     'vendor_id'  => 1,
-                    'qty'        => ! empty( $receiver[1]['qty'] ) ? $receiver[1]['qty'] + $order_item['qty'] : $order_item['qty'],
-                    'commission' => ! empty( $receiver[1]['commission'] ) ? $receiver[1]['commission'] + $admin_comm : $admin_comm,
-                    'total'      => ! empty( $receiver[1] ) ? $receiver[1]['total'] + $admin_comm : $admin_comm,
+                    'qty'        => ! empty( $receiver[1]['qty'] ) ? (int) $receiver[1]['qty'] + (int) $order_item['qty'] : (int) $order_item['qty'],
+                    'commission' => ! empty( $receiver[1]['commission'] ) ? (float) $receiver[1]['commission'] + (float) $admin_comm : (float) $admin_comm,
+                    'total'      => ! empty( $receiver[1] ) ? (float) $receiver[1]['total'] + (float) $admin_comm : (float) $admin_comm,
                 );
             } else {
                 $receiver[1][ $key ] = array(
                     'vendor_id'  => 1,
                     'product_id' => $product_id,
-                    'commission' => $admin_comm,
+                    'commission' => (float) $admin_comm,
                     'shipping'   => 0,
                     'tax'        => 0,
-                    'qty'        => $order_item['qty'],
-                    'total'      => $admin_comm,
+                    'qty'        => (int) $order_item['qty'],
+                    'total'      => (float) $admin_comm,
                 );
             }
         }
 
         // Add remainders on end to admin.
-        $discount = $order->get_total_discount();
-        $shipping = round( ( $order->get_shipping_total() - $shipping_given ), 2 );
-        $tax      = round( $order->get_total_tax() - $tax_given, 2 );
-        $total    = ( $tax + $shipping ) - $discount;
+        $discount = (float) $order->get_total_discount();
+        $shipping = round( ( (float) $order->get_shipping_total() - (float) $shipping_given ), 2 );
+        $tax      = round( ( (float) $order->get_total_tax() - (float) $tax_given ), 2 );
+        $total    = ( (float) $tax + (float) $shipping ) - (float) $discount;
 
         if ( ! empty( $receiver ) ) {
             if ( $group ) {
-                $r_total                   = round( $receiver[1]['total'], 2 );
-                $receiver[1]['commission'] = round( $receiver[1]['commission'], 2 ) - round( $discount, 2 );
-                $receiver[1]['shipping']   = $shipping;
-                $receiver[1]['tax']        = $tax;
-                $receiver[1]['total']      = $r_total + round( $total, 2 );
+                $r_total                   = round( (float) $receiver[1]['total'], 2 );
+                $receiver[1]['commission'] = round( (float) $receiver[1]['commission'], 2 ) - round( (float) $discount, 2 );
+                $receiver[1]['shipping']   = (float) $shipping;
+                $receiver[1]['tax']        = (float) $tax;
+                $receiver[1]['total']      = (float) $r_total + round( (float) $total, 2 );
             } elseif ( ! empty( $item_keys ) ) {
                 foreach ( $item_keys as $key ) {
-                    $r_total                           = round( $receiver[1][ $key ]['total'], 2 );
-                    $receiver[1][ $key ]['commission'] = round( $receiver[1][ $key ]['commission'], 2 ) - round( $discount, 2 );
-                    $receiver[1][ $key ]['shipping']   = ( $order->get_shipping_total() - $shipping_given );
-                    $receiver[1][ $key ]['tax']        = $tax;
-                    $receiver[1][ $key ]['total']      = $r_total + round( $total, 2 );
+                    $r_total                           = round( (float) $receiver[1][ $key ]['total'], 2 );
+                    $receiver[1][ $key ]['commission'] = round( (float) $receiver[1][ $key ]['commission'], 2 ) - round( (float) $discount, 2 );
+                    $receiver[1][ $key ]['shipping']   = ( (float) $order->get_shipping_total() - (float) $shipping_given );
+                    $receiver[1][ $key ]['tax']        = (float) $tax;
+                    $receiver[1][ $key ]['total']      = (float) $r_total + round( (float) $total, 2 );
                 }
             }
         }
@@ -440,21 +463,20 @@ class WCV_Vendors {
      * @param int $order_id  The order ID.
      *
      * @return string|null
+     * @version  2.6.5 Fix security issues.
      */
     public static function count_due_by_vendor( $vendor_id, $order_id ) {
 
         global $wpdb;
-
-        $count = $wpdb->get_var(
-            $wpdb->prepare(
-                "SELECT COUNT(*) FROM {$wpdb->prefix}pv_commission WHERE vendor_id = %d AND order_id = %d AND status = %s",
-                $vendor_id,
-                $order_id,
-                'due'
-            )
+        $sql   = $wpdb->prepare(
+            "SELECT COUNT(*) FROM {$wpdb->prefix}pv_commission WHERE vendor_id = %d AND order_id = %d AND status = %s",
+            $vendor_id,
+            $order_id,
+            'due'
         );
+        $count = $wpdb->get_var( $sql ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 
-        return $count;
+        return (int) $count ? (int) $count : 0;
     }
 
     /**
@@ -463,18 +485,23 @@ class WCV_Vendors {
      * @param int $vendor_id The vendor ID.
      *
      * @return array
+     * @version  2.6.5 Fix security issues.
      */
     public static function get_due_orders_by_vendor( $vendor_id ) {
 
         global $wpdb;
 
-        $results = $wpdb->get_results(
-            $wpdb->prepare(
-                "SELECT * FROM {$wpdb->prefix}pv_commission WHERE vendor_id = %d AND status = %s",
-                $vendor_id,
-                'due'
-            )
+        $sql = $wpdb->prepare(
+            "SELECT * FROM {$wpdb->prefix}pv_commission WHERE vendor_id = %d AND status = %s",
+            $vendor_id,
+            'due'
         );
+
+        $results = $wpdb->get_results( $sql ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+
+        if ( ! is_array( $results ) ) {
+            return array();
+        }
 
         return $results;
     }
@@ -561,8 +588,8 @@ class WCV_Vendors {
 
         $users = get_users(
             array(
-                'meta_key'   => 'pv_shop_slug',
-                'meta_value' => sanitize_title( $input ),
+                'meta_key'   => 'pv_shop_slug', // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
+                'meta_value' => sanitize_title( $input ), // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value
             )
         );
 
@@ -734,18 +761,28 @@ class WCV_Vendors {
      *
      * @since 1.0.0
      *
-     * @param int|WC_Order $order The order ID, or WC_Order object.
+     * @param int|WC_Order $order_object_or_id The order ID, or WC_Order object.
      *
      * @return WC_Order_Vendor[] $vendor_orders Array of vendor orders.
      */
-    public static function create_child_orders( $order ) {
+    public static function create_child_orders( $order_object_or_id ) {
 
-        if ( ! is_a( $order, 'WC_Order' ) ) {
-            $order = wc_get_order( $order );
+        $order = null;
+
+        if ( is_numeric( $order_object_or_id ) ) {
+            $order = wc_get_order( $order_object_or_id );
+        } elseif ( is_a( $order_object_or_id, 'WC_Order' ) ) {
+            $order = $order_object_or_id;
         }
 
-        if ( ! is_a( $order, 'WC_Order' ) ) {
+        if ( ! $order ) {
             return array();
+        }
+
+        $sub_orders = self::get_sub_orders( $order );
+
+        if ( ! empty( $sub_orders ) ) {
+            return $sub_orders;
         }
 
         $items = $order->get_items();
@@ -758,6 +795,11 @@ class WCV_Vendors {
 
         foreach ( $items as $item_id => $item ) {
             if ( isset( $item['product_id'] ) && 0 !== $item['product_id'] ) {
+                // check if product exists.
+                $product = wc_get_product( $item['product_id'] );
+                if ( ! $product instanceof \WC_Product ) {
+                    continue;
+                }
                 // check if product is from vendor.
                 $product_author = get_post_field( 'post_author', $item['product_id'] );
                 if ( self::is_vendor( $product_author ) ) {
@@ -864,14 +906,17 @@ class WCV_Vendors {
         }
 
         remove_action( 'woocommerce_order_status_changed', array( $this, 'update_sub_order_status' ), 10 );
-
+        $payment_gategay = $order->get_payment_method();
+        $method_title    = $order->get_payment_method_title();
         foreach ( $sub_order_ids as $sub_order_id ) {
             if ( ! $sub_order_id ) {
                 continue;
             }
             $sub_order = wcv_get_order( $sub_order_id );
-            if ( $sub_order->get_status() === $old_status || $sub_order->get_status() !== $new_status ) {
 
+            if ( $sub_order->get_status() === $old_status || $sub_order->get_status() !== $new_status ) {
+                $sub_order->set_payment_method( $payment_gategay );
+                $sub_order->set_payment_method_title( $method_title );
                 $sub_order->set_status( $new_status );
                 $sub_order->save();
             }
@@ -953,7 +998,7 @@ class WCV_Vendors {
 
         // Manually update the post author since the COT does not have post_author.
         if ( ! wcv_cot_enabled() ) {
-            $wpdb->update(
+            $wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
                 $wpdb->posts,
                 array(
                     'post_author' => $args['customer_id'],
@@ -1239,7 +1284,10 @@ class WCV_Vendors {
      * @version 2.4.8
      * @since   2.4.8 - Added.
      */
-    public function get_sub_orders( $order_id ) {
+    public static function get_sub_orders( $order_id ) {
+        if ( is_a( $order_id, 'WC_Order' ) ) {
+            $order_id = $order_id->get_id();
+        }
         $statuses   = array_keys( wc_get_order_statuses() );
         $statuses[] = 'trash';
 
@@ -1409,15 +1457,17 @@ class WCV_Vendors {
     }
 
     /**
-     * Admin create child orders
+     * Create child orders when order is created via admin
      *
+     * @param int $order_id The order ID.
+     * @return array|null Returns array from create_child_orders() or null if conditions not met.
      * @since 2.5.1.1
-     *
-     * @param int $order_id The order object.
+     * @since 2.6.7 Added check for _created_via to prevent duplicate calls.
      */
     public static function admin_create_child_orders( $order_id ) {
 
-        if ( ! is_admin() ) {
+        // Only run for manually created orders in admin.
+        if ( ! is_admin() || ! current_user_can( 'manage_woocommerce' ) ) {
             return;
         }
 
@@ -1427,6 +1477,62 @@ class WCV_Vendors {
             return;
         }
 
-        return self::create_child_orders( $order_id );
+        // Get order object.
+        $order = wc_get_order( $order_id );
+
+        if ( ! $order ) {
+            return;
+        }
+
+        $created_via = $order->get_created_via();
+
+        if ( 'admin' !== $created_via ) {
+            return;
+        }
+
+        return self::create_child_orders( $order );
+    }
+
+
+    /**
+     * Remove vendor date meta
+     *
+     * @param int    $user_id The user id.
+     * @param string $role The role.
+     */
+    public function remove_vendor_date_meta( $user_id, $role ) {
+
+        switch ( $role ) {
+            case 'vendor':
+                delete_user_meta( $user_id, '_wcv_approve_date' );
+                break;
+            case 'pending_vendor':
+                delete_user_meta( $user_id, '_wcv_apply_date' );
+                break;
+            default:
+                break;
+        }
+    }
+
+    /**
+     * Update vendor date meta
+     *
+     * @param int    $user_id The user id.
+     * @param string $role The role.
+     */
+    public function update_vendor_date_meta( $user_id, $role ) {
+        if ( 'vendor' === $role ) {
+            $is_meta_exits = get_user_meta( $user_id, '_wcv_approve_date', true );
+            if ( ! $is_meta_exits ) {
+                wcv_update_approve_date( $user_id );
+            }
+        }
+
+        if ( 'pending_vendor' === $role ) {
+            $is_meta_exits = get_user_meta( $user_id, '_wcv_apply_date', true );
+            if ( ! $is_meta_exits ) {
+                wcv_update_apply_date( $user_id );
+            }
+        }
     }
 }

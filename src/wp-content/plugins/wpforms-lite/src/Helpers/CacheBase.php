@@ -14,25 +14,25 @@ use WPForms\Tasks\Tasks;
 abstract class CacheBase {
 
 	/**
-	 * Encrypt cached file.
+	 * Encrypt a cached file.
 	 *
 	 * @since 1.8.7
 	 */
-	const ENCRYPT = false;
+	protected const ENCRYPT = false;
 
 	/**
 	 * Request lock time, min.
 	 *
 	 * @since 1.8.7
 	 */
-	const REQUEST_LOCK_TIME = 15;
+	private const REQUEST_LOCK_TIME = 15;
 
 	/**
 	 * A class id or array of cache class ids to sync updates with.
 	 *
 	 * @since 1.8.9
 	 */
-	const SYNC_WITH = [];
+	protected const SYNC_WITH = [];
 
 	/**
 	 * The current class is syncing updates now.
@@ -111,6 +111,14 @@ abstract class CacheBase {
 		$this->cache_dir  = $this->get_cache_dir(); // See comment in the method.
 		$this->cache_file = $this->cache_dir . $this->settings['cache_file'];
 
+		// Do not update caches on heartbeat events.
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$action = isset( $_POST['action'] ) ? sanitize_text_field( wp_unslash( $_POST['action'] ) ) : '';
+
+		if ( $action === 'heartbeat' ) {
+			return;
+		}
+
 		if ( ! $this->allow_load() ) {
 			return;
 		}
@@ -131,7 +139,7 @@ abstract class CacheBase {
 	 *
 	 * @since 1.6.8
 	 */
-	private function hooks() {
+	private function hooks(): void {
 
 		add_action( 'shutdown', [ $this, 'cache_dir_complete' ] );
 
@@ -157,12 +165,12 @@ abstract class CacheBase {
 	 * @noinspection PhpCastIsUnnecessaryInspection
 	 * @noinspection UnnecessaryCastingInspection
 	 */
-	public function sync_updates() {
+	public function sync_updates(): void {
 
 		// Prevent infinite loop.
 		if ( $this->syncing_updates ) {
 			foreach ( (array) static::SYNC_WITH as $classname ) {
-				$cache = wpforms()->get( $classname );
+				$cache = wpforms()->obj( $classname );
 
 				if ( ! $cache instanceof self ) {
 					continue;
@@ -178,13 +186,16 @@ abstract class CacheBase {
 	 *
 	 * @since 1.6.8
 	 */
-	private function update_settings() {
+	private function update_settings(): void {
 
 		$default_settings = [
 
 			// Remote source URL.
-			// For instance: 'https://wpforms.com/wp-content/addons.json'.
+			// For instance: 'https://wpformsapi.com/feeds/v1/addons/'.
 			'remote_source' => '',
+
+			// Request timeout in seconds.
+			'timeout'       => 10,
 
 			// Cache file.
 			// Just file name. For instance: 'addons.json'.
@@ -263,7 +274,7 @@ abstract class CacheBase {
 	 *
 	 * @return int
 	 */
-	private function cache_time() {
+	private function cache_time(): int {
 
 		return (int) Transient::get( $this->cache_key );
 	}
@@ -275,13 +286,13 @@ abstract class CacheBase {
 	 *
 	 * @return bool
 	 */
-	private function exists() {
+	private function exists(): bool {
 
 		return is_file( $this->cache_file ) && is_readable( $this->cache_file );
 	}
 
 	/**
-	 * Get cache from cache file.
+	 * Get cache from a cache file.
 	 *
 	 * @since 1.8.2
 	 *
@@ -357,61 +368,22 @@ abstract class CacheBase {
 	}
 
 	/**
-	 * Get cached data.
-	 *
-	 * @since 1.6.8
-	 * @deprecated 1.8.2
-	 *
-	 * @return array Cached data.
-	 * @noinspection PhpUnused
-	 */
-	public function get_cached() {
-
-		_deprecated_function( __METHOD__, '1.8.2 of the WPForms plugin', __CLASS__ . '::get()' );
-
-		return $this->get();
-	}
-
-	/**
-	 * Update cached data with actual data retrieved from the remote source.
-	 *
-	 * @since 1.6.8
-	 * @deprecated 1.8.2
-	 *
-	 * @return array
-	 * @noinspection PhpUnused
-	 */
-	public function update_cache() {
-
-		_deprecated_function( __METHOD__, '1.8.2 of the WPForms plugin' );
-
-		$this->update();
-
-		return $this->get();
-	}
-
-	/**
 	 * Get data from API.
 	 *
 	 * @since 1.8.2
 	 *
 	 * @return array
 	 */
-	private function perform_remote_request(): array { // phpcs:ignore Generic.Metrics.CyclomaticComplexity.MaxExceeded, Generic.Metrics.CyclomaticComplexity.TooHigh
+	protected function perform_remote_request(): array {
 
-		$wpforms_key = wpforms()->is_pro() ? wpforms_get_license_key() : 'lite';
-
-		$query_args = array_merge(
-			[ 'tgm-updater-key' => $wpforms_key ],
-			$this->settings['query_args'] ?? []
-		);
+		$query_args = $this->settings['query_args'] ?? [];
 
 		$request_url = add_query_arg( $query_args, $this->settings['remote_source'] );
 		$user_agent  = wpforms_get_default_user_agent();
 		$request     = wp_remote_get(
 			$request_url,
 			[
-				'timeout'    => 10,
+				'timeout'    => $this->settings['timeout'],
 				'user-agent' => $user_agent,
 			]
 		);
@@ -435,7 +407,8 @@ abstract class CacheBase {
 		}
 
 		$response_code     = wp_remote_retrieve_response_code( $request );
-		$response_headers  = wp_remote_retrieve_headers( $request )->getAll();
+		$raw_headers       = wp_remote_retrieve_headers( $request );
+		$response_headers  = is_object( $raw_headers ) ? $raw_headers->getAll() : (array) $raw_headers;
 		$response_body     = wp_remote_retrieve_body( $request );
 		$response_body_len = strlen( $response_body );
 		$response_body_log = $response_body_len > 1024 ? "(First 1 kB):\n" . substr( trim( $response_body ), 0, 1024 ) . '...' : trim( $response_body );
@@ -494,7 +467,7 @@ abstract class CacheBase {
 	 * @param array  $data  Log data.
 	 * @param string $type  Log type.
 	 */
-	private function add_log( string $title, array $data, string $type = 'log' ) {
+	protected function add_log( string $title, array $data, string $type = 'log' ): void {
 
 		wpforms_log(
 			$title,
@@ -510,14 +483,14 @@ abstract class CacheBase {
 	 *
 	 * @since 1.6.8
 	 */
-	public function schedule_update_cache() {
+	public function schedule_update_cache(): void {
 
-		// Just skip if not need to register scheduled action.
+		// Just skip if not need to register a scheduled action.
 		if ( empty( $this->settings['update_action'] ) ) {
 			return;
 		}
 
-		$tasks = wpforms()->get( 'tasks' );
+		$tasks = wpforms()->obj( 'tasks' );
 
 		if (
 			! $tasks instanceof Tasks ||
@@ -537,7 +510,7 @@ abstract class CacheBase {
 	 *
 	 * @since 1.6.8
 	 */
-	public function cache_dir_complete() {
+	public function cache_dir_complete(): void {
 
 		if ( ! $this->updated ) {
 			return;
@@ -554,7 +527,7 @@ abstract class CacheBase {
 	 *
 	 * @since 1.8.7
 	 */
-	public function invalidate_cache() {
+	public function invalidate_cache(): void {
 
 		Transient::delete( $this->cache_key );
 	}

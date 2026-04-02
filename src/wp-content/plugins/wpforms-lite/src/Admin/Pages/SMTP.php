@@ -70,7 +70,8 @@ class SMTP {
 		}
 
 		// Check what page we are on.
-		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.CSRF.NonceVerification
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
 
 		// Only load if we are actually on the SMTP page.
 		if ( $page !== self::SLUG ) {
@@ -261,7 +262,7 @@ class SMTP {
 			esc_attr__( 'WP Mail SMTP screenshot', 'wpforms-lite' ),
 			esc_url( WPFORMS_PLUGIN_URL . 'assets/images/smtp/screenshot-full.png?ver=' . WPFORMS_VERSION ),
 			esc_html__( 'Improves email deliverability in WordPress.', 'wpforms-lite' ),
-			esc_html__( 'Used by 2+ million websites.', 'wpforms-lite' ),
+			esc_html__( 'Used by 4+ million websites.', 'wpforms-lite' ),
 			esc_html__( 'Free mailers: SendLayer, SMTP.com, Brevo, Google Workspace / Gmail, Mailgun, Postmark, SendGrid.', 'wpforms-lite' ),
 			esc_html__( 'Pro mailers: Amazon SES, Microsoft 365 / Outlook.com, Zoho Mail.', 'wpforms-lite' )
 		);

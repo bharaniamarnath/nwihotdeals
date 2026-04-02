@@ -1,22 +1,13 @@
 <?php
 namespace Woolentor\Modules\Popup_Builder;
+use WooLentor\Traits\Singleton;
 
 if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
 
 class Assets{
-    private static $_instance = null;
+    use Singleton;
 
     private $version;
-
-    /**
-     * Get Instance
-     */
-    public static function get_instance(){
-        if( is_null( self::$_instance ) ){
-            self::$_instance = new self();
-        }
-        return self::$_instance;
-    }
 
     /**
      * Constructor
@@ -65,9 +56,10 @@ class Assets{
         if( $this->is_popup_admin_area() ){
             wp_enqueue_style( 'wlpb-admin' );
             wp_enqueue_script( 'wlpb-admin' );
+            wp_enqueue_script( 'js-cookie' );
         }
 
-        if( $this->is_popup_post_edit_screen() ){
+        if( $this->is_popup_post_edit_screen() || $this->is_template_list_page()){
             // Dependencies for the admin popup settings design.
             // common for .updating-message class.
             wp_enqueue_style( 'woolentor-admin', WOOLENTOR_ADDONS_PL_URL . 'includes/admin/assets/css/woolentor-admin.css', array('common'), $this->version );
@@ -102,5 +94,10 @@ class Assets{
         }
 
         return false;
+    }
+
+    private function is_template_list_page(){
+        global $pagenow, $typenow;
+        return 'edit.php' === $pagenow && 'woolentor-template' === $typenow;
     }
 }

@@ -138,6 +138,15 @@ class WPForms_WP_Emails {
 	public $notification_id = '';
 
 	/**
+	 * Context data to be passed to the tag.
+	 *
+	 * @since 1.9.9.2
+	 *
+	 * @var array|array[]
+	 */
+	private $context_data = [];
+
+	/**
 	 * Get things going.
 	 *
 	 * @since 1.1.3
@@ -396,6 +405,8 @@ class WPForms_WP_Emails {
 			return false;
 		}
 
+		$this->context_data = [ 'to_email' => (array) $to ];
+
 		// Hooks before email is sent.
 		do_action( 'wpforms_email_send_before', $this );
 
@@ -424,7 +435,10 @@ class WPForms_WP_Emails {
 			$this
 		);
 
-		$entry_obj = wpforms()->get( 'entry' );
+		// Update context data, as 'to' email address could be changed by the filter above.
+		$this->context_data = [ 'to_email' => (array) $data['to'] ];
+
+		$entry_obj = wpforms()->obj( 'entry' );
 
 		// phpcs:ignore WPForms.Comments.PHPDocHooks.RequiredHookDocumentation, WPForms.PHP.ValidateHooks.InvalidHookName
 		$send_same_process = apply_filters(
@@ -521,18 +535,18 @@ class WPForms_WP_Emails {
 	 * Process a smart tag.
 	 * Decodes entities and sanitized (keeping line breaks) by default.
 	 *
-	 * @uses wpforms_decode_string()
+	 * @uses  wpforms_decode_string()
 	 *
 	 * @since 1.1.3
 	 * @since 1.6.0 Deprecated 2 params: $sanitize, $linebreaks.
 	 *
-	 * @param string $string String that may contain tags.
+	 * @param string $content String that may contain tags.
 	 *
-	 * @return string
+	 * @return string|mixed
 	 */
-	public function process_tag( $string = '' ) {
+	public function process_tag( $content = '' ) {
 
-		return wpforms_process_smart_tags( $string, $this->form_data, $this->fields, $this->entry_id, 'email' );
+		return wpforms_process_smart_tags( $content, $this->form_data, $this->fields, $this->entry_id, 'email', $this->context_data );
 	}
 
 	/**
@@ -585,7 +599,14 @@ class WPForms_WP_Emails {
 
 					// Check if the field type is in $other_fields, otherwise skip.
 					// Skip if the field is conditionally hidden.
-					if ( empty( $other_fields ) || ! in_array( $field['type'], $other_fields, true ) || wpforms_conditional_logic_fields()->field_is_hidden( $this->form_data, $field_id ) ) {
+					if (
+						empty( $other_fields ) ||
+						! in_array( $field['type'], $other_fields, true ) ||
+						(
+							wpforms()->is_pro() &&
+							wpforms_conditional_logic_fields()->field_is_hidden( $this->form_data, $field_id )
+						)
+					) {
 						continue;
 					}
 
@@ -613,6 +634,9 @@ class WPForms_WP_Emails {
 						! apply_filters( 'wpforms_email_display_empty_fields', false ) &&
 						( ! isset( $this->fields[ $field_id ]['value'] ) || (string) $this->fields[ $field_id ]['value'] === '' )
 					) {
+						/** This filter is documented in wpforms/includes/emails/class-emails.php */
+						$message .= apply_filters( 'wpforms_wp_emails_html_field_value_message_html', '' , $field, $this->form_data );
+
 						continue;
 					}
 
@@ -646,6 +670,25 @@ class WPForms_WP_Emails {
 				if ( 1 === $x ) {
 					$field_item = str_replace( 'border-top:1px solid #dddddd;', '', $field_item );
 				}
+
+				/**
+				 * Filter the field name before it is added to the email message.
+				 *
+				 * @since 1.9.1
+				 *
+				 * @param string $field_name Field name.
+				 * @param array  $field      Field data.
+				 * @param array  $form_data  Form data and settings.
+				 * @param string $context    Context of the field name.
+				 */
+				$field_name = apply_filters( // phpcs:ignore WPForms.PHP.ValidateHooks.InvalidHookName
+					'wpforms_html_field_name',
+					$field_name,
+					$this->fields[ $field_id ] ?? $field,
+					$this->form_data,
+					'email-html'
+				);
+
 				$field_item = str_replace( '{field_name}', $field_name, $field_item );
 				$field_item = str_replace(
 					'{field_value}',
@@ -659,7 +702,16 @@ class WPForms_WP_Emails {
 					$field_item
 				);
 
-				$message .= wpautop( $field_item );
+				/**
+				 * Filter the field item before it is added to the email message.
+				 *
+				 * @since 1.9.3
+				 *
+				 * @param string $field_message Field message.
+				 * @param array  $field         Field data.
+				 * @param array  $form_data     Form data and settings.
+				 */
+				$message .= apply_filters( 'wpforms_wp_emails_html_field_value_message_html', wpautop( $field_item ), $field, $this->form_data );
 
 				$x ++;
 			}

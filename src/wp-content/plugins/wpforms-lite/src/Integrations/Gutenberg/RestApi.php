@@ -50,7 +50,7 @@ class RestApi {
 	 */
 	public function __construct( $form_selector_obj, $themes_data_obj ) {
 
-		if ( ! $form_selector_obj || ! $themes_data_obj || ! wpforms_is_rest() ) {
+		if ( ! $form_selector_obj || ! $themes_data_obj || ! wpforms_is_wpforms_rest() ) {
 			return;
 		}
 
@@ -88,7 +88,7 @@ class RestApi {
 			[
 				'methods'             => 'GET',
 				'callback'            => [ $this, 'get_forms' ],
-				'permission_callback' => [ $this, 'permissions_check' ],
+				'permission_callback' => [ $this, 'forms_permissions_check' ],
 			]
 		);
 
@@ -108,7 +108,7 @@ class RestApi {
 			[
 				'methods'             => 'POST',
 				'callback'            => [ $this, 'save_themes' ],
-				'permission_callback' => [ $this, 'permissions_check' ],
+				'permission_callback' => [ $this, 'admin_permissions_check' ],
 			]
 		);
 	}
@@ -127,6 +127,40 @@ class RestApi {
 		// Restrict endpoint to only users who have the edit_posts capability.
 		if ( ! current_user_can( 'edit_posts' ) ) {
 			return new WP_Error( 'rest_forbidden', esc_html__( 'This route is private.', 'wpforms-lite' ), [ 'status' => 401 ] );
+		}
+
+		return true;
+	}
+
+	/**
+	 * Check if a user has permission to access forms data.
+	 *
+	 * @since 1.9.9.4
+	 *
+	 * @return true|WP_Error True if a user has permission.
+	 */
+	public function forms_permissions_check() {
+
+		// Restrict endpoint to only users who have WPForms capabilities.
+		if ( ! wpforms_current_user_can() ) {
+			return new WP_Error( 'rest_forbidden', esc_html__( 'This route is private.', 'wpforms-lite' ), [ 'status' => 401 ] );
+		}
+
+		return true;
+	}
+
+	/**
+	 * Check if a user has admin permissions.
+	 *
+	 * @since 1.9.2.3
+	 *
+	 * @return true|WP_Error True if a user has permission.
+	 */
+	public function admin_permissions_check() {
+
+		// Restrict endpoint to only users who have the manage_options capability.
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return new WP_Error( 'rest_forbidden', esc_html__( 'This route is accessible only to administrators.', 'wpforms-lite' ), [ 'status' => 401 ] );
 		}
 
 		return true;

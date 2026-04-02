@@ -150,16 +150,8 @@ class Assets_Management{
                 'src'     => WOOLENTOR_ADDONS_PL_URL . 'includes/admin/assets/css/woolentor-admin.css',
                 'version' => WOOLENTOR_VERSION
             ],
-            'woolentor-selectric' => [
-                'src'     => WOOLENTOR_ADDONS_PL_URL . 'includes/admin/assets/lib/css/selectric.css',
-                'version' => WOOLENTOR_VERSION
-            ],
             'woolentor-sweetalert' => [
                 'src'     => WOOLENTOR_ADDONS_PL_URL . 'includes/admin/assets/lib/css/sweetalert2.min.css',
-                'version' => WOOLENTOR_VERSION
-            ],
-            'woolentor-temlibray-style' => [
-                'src'     => WOOLENTOR_ADDONS_PL_URL . 'includes/admin/assets/css/tmp-style.css',
                 'version' => WOOLENTOR_VERSION
             ],
             
@@ -257,31 +249,6 @@ class Assets_Management{
                 'src'     => WOOLENTOR_ADDONS_PL_URL . 'includes/admin/assets/lib/js/sweetalert2.min.js',
                 'version' => WOOLENTOR_VERSION
             ],
-            'woolentor-modernizr' => [
-                'src'     => WOOLENTOR_ADDONS_PL_URL . 'includes/admin/assets/lib/js/modernizr.custom.63321.js',
-                'version' => WOOLENTOR_VERSION,
-                'deps'    => [ 'jquery' ]
-            ],
-            'jquery-selectric' => [
-                'src'     => WOOLENTOR_ADDONS_PL_URL . 'includes/admin/assets/lib/js/jquery.selectric.min.js',
-                'version' => WOOLENTOR_VERSION,
-                'deps'    => [ 'jquery' ]
-            ],
-            'jquery-ScrollMagic' => [
-                'src'     => WOOLENTOR_ADDONS_PL_URL . 'includes/admin/assets/lib/js/ScrollMagic.min.js',
-                'version' => WOOLENTOR_VERSION,
-                'deps'    => [ 'jquery' ]
-            ],
-            'babel-min' => [
-                'src'     => WOOLENTOR_ADDONS_PL_URL . 'includes/admin/assets/lib/js/babel.min.js',
-                'version' => WOOLENTOR_VERSION,
-                'deps'    => [ 'jquery' ]
-            ],
-            'woolentor-templates' => [
-                'src'     => WOOLENTOR_ADDONS_PL_URL . 'includes/admin/assets/js/template_library_manager.js',
-                'version' => WOOLENTOR_VERSION,
-                'deps'    => [ 'jquery', 'wp-util' ]
-            ],
             'woolentor-install-manager' => [
                 'src'     => WOOLENTOR_ADDONS_PL_URL . 'includes/admin/assets/js/install_manager.js',
                 'version' => WOOLENTOR_VERSION,
@@ -352,7 +319,7 @@ class Assets_Management{
                 'elementorURL'     => admin_url( 'edit.php?post_type=elementor_library' ),
                 'version'          => WOOLENTOR_VERSION,
                 'pluginURL'        => plugin_dir_url( __FILE__ ),
-                'alldata'          => !empty( base::$template_info['templates'] ) ? base::$template_info['templates'] : array(),
+                'alldata'          => !empty( base::get_template_info()['templates'] ) ? base::get_template_info()['templates'] : array(),
                 'prolink'          => 'https://woolentor.com/pricing/?utm_source=admin&utm_medium=library',
                 'prolabel'         => esc_html__( 'Pro', 'woolentor' ),
                 'loadingimg'       => WOOLENTOR_ADDONS_PL_URL . 'includes/admin/assets/images/loading.gif',
@@ -376,7 +343,6 @@ class Assets_Management{
                     'email' => $current_user->user_email,
                 ],
             ];
-            wp_localize_script( 'woolentor-templates', 'WLTM', $localize_data );
             wp_localize_script( 'woolentor-install-manager', 'WLIM', $localize_data );
         }
         

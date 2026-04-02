@@ -70,7 +70,7 @@ function wpcode_get_auto_insert_location_picker( $selected_location, $code_type 
 					label="<?php echo esc_attr( $type->get_label() ); ?>"
 					data-code-type="<?php echo esc_attr( $type->code_type ); ?>"
 					data-label-pill="<?php echo esc_attr( $type->label_pill ); ?>"
-				<?php echo $extra_data; ?>
+				<?php echo $extra_data; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 			>
 				<?php
 				foreach ( $options as $key => $location ) {
@@ -421,9 +421,16 @@ function wpcode_is_local( $ip = null ) {
 /**
  * Attempts to detect popular caching plugins and clear their cache.
  *
+ * @param string $context The context in which the cache is being cleared.
+ *
  * @return void
  */
-function wpcode_clear_all_plugins_page_cache() {
+function wpcode_clear_all_plugins_page_cache( $context = '' ) {
+
+	if ( apply_filters( 'wpcode_skip_clear_all_plugins_cache', false, $context ) ) {
+		return;
+	}
+
 	// LiteSpeed Cache.
 	if ( function_exists( 'run_litespeed_cache' ) && class_exists( 'LiteSpeed\Purge' ) && method_exists( 'LiteSpeed\Purge', 'purge_all' ) ) {
 		LiteSpeed\Purge::purge_all();

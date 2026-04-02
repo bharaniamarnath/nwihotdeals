@@ -11,6 +11,7 @@
 class WPCode_Admin_Page_Headers_Footers extends WPCode_Admin_Page {
 
 	use WPCode_Revisions_Display_Lite;
+	use WPCode_WPConsent_Notice;
 
 	/**
 	 * The page slug to be used when adding the submenu.
@@ -149,12 +150,14 @@ class WPCode_Admin_Page_Headers_Footers extends WPCode_Admin_Page {
 	 */
 	public function output_content() {
 
+		$this->notice_wpconsent();
+
 		$header_desc = sprintf(
 		/* translators: %s: The `<head>` tag */
 			esc_html__( 'These scripts will be printed in the %s section.', 'insert-headers-and-footers' ),
 			'<code>&lt;head&gt;</code>'
 		);
-		$body_desc   = sprintf(
+		$body_desc = sprintf(
 		/* translators: %s: The `<head>` tag */
 			esc_html__( 'These scripts will be printed just below the opening %s tag.', 'insert-headers-and-footers' ),
 			'<code>&lt;body&gt;</code>'
@@ -247,7 +250,7 @@ class WPCode_Admin_Page_Headers_Footers extends WPCode_Admin_Page {
 		}
 
 		?>
-		<div>
+		<div class="wpcode-simple-mode-container-button">
 			<label for="headers_footers_mode" class="wpcode-status-text"><?php esc_html_e( 'Simple mode', 'insert-headers-and-footers' ); ?></label>
 			<?php echo $this->get_checkbox_toggle( true, 'headers_footers_mode' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 		</div>
@@ -283,13 +286,13 @@ class WPCode_Admin_Page_Headers_Footers extends WPCode_Admin_Page {
 
 		if ( $this->can_edit && isset( $_REQUEST['ihaf_insert_header'] ) && isset( $_REQUEST['ihaf_insert_footer'] ) ) {
 			// If they are not allowed to edit the page these should not be processed but we still allow them to save to disable the simple mode.
-			update_option( 'ihaf_insert_header', $_REQUEST['ihaf_insert_header'] );
-			update_option( 'ihaf_insert_footer', $_REQUEST['ihaf_insert_footer'] );
-			update_option( 'ihaf_insert_body', isset( $_REQUEST['ihaf_insert_body'] ) ? $_REQUEST['ihaf_insert_body'] : '' );
+			update_option( 'ihaf_insert_header', $_REQUEST['ihaf_insert_header'] );  // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+			update_option( 'ihaf_insert_footer', $_REQUEST['ihaf_insert_footer'] );  // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+			update_option( 'ihaf_insert_body', isset( $_REQUEST['ihaf_insert_body'] ) ? $_REQUEST['ihaf_insert_body'] : '' );  // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 
 			// Clear the cache.
 			if ( apply_filters( 'wpcode_clear_cache_on_global_save', true ) ) {
-				wpcode_clear_all_plugins_page_cache();
+				wpcode_clear_all_plugins_page_cache( 'global' );
 			}
 		}
 
@@ -352,6 +355,5 @@ class WPCode_Admin_Page_Headers_Footers extends WPCode_Admin_Page {
 			$html,
 			__( 'Easily switch back to a previous version of your global scripts.', 'insert-headers-and-footers' )
 		);
-
 	}
 }

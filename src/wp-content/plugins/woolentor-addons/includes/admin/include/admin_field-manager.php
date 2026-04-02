@@ -35,6 +35,7 @@ class Woolentor_Admin_Fields_Manager {
         wp_enqueue_script( 'jquery' );
     }
 
+    // Available dependency conditions: ==, !=, >=, >, <=, <, any, not-any
     public function add_field( $option, $section ){
 
         $name       = isset( $option['option_id'] ) ? $option['option_id'] : $option['name'];
@@ -114,7 +115,6 @@ class Woolentor_Admin_Fields_Manager {
     }
 
     public function create_field( $args, $callback ){
-        // call_user_func( $callback, $args );
         if ( method_exists( $callback[0], $callback[1] ) && is_callable( $callback ) ){
             call_user_func( $callback, $args );
         }
@@ -427,6 +427,7 @@ class Woolentor_Admin_Fields_Manager {
         $add_limit = $args['add_limit'] !== 0 ? 'data-limit="'.$args['add_limit'].'"' : '';
         $custom_button = 'data-customaction="'.esc_attr( htmlspecialchars( wp_json_encode( $args['custom_button'] ) ) ).'"';
         $custom_button_html = $args['custom_button'] ? sprintf('<button class="button button-primary woolentor-repeater-custom-action woolentor-admin-btn-primary" type="button" %1$s>%2$s</button>', $custom_button, $args['custom_button']['text'] ) : '';
+        $add_button_label = isset( $args['options']['button_label'] ) ? $args['options']['button_label'] : esc_html__('Add Item','woolentor');
 
         echo '<div class="woolentor-option-repeater-item woolentor-repeater-hidden" data-depend-id="'.$args['id'].'">';
         ?>
@@ -448,7 +449,53 @@ class Woolentor_Admin_Fields_Manager {
             </div>
         <?php
         echo '</div>';
-        echo '<button type="button" class="woolentor-repeater-item-add woolentor-admin-btn-primary" '.$add_limit.'><span class="dashicon dashicons dashicons-plus-alt2"></span>'.esc_html__('Add Item','woolentor').'</button>'.$custom_button_html.'</div>';
+        echo '<button type="button" class="woolentor-repeater-item-add woolentor-admin-btn-primary" '.$add_limit.'><span class="dashicon dashicons dashicons-plus-alt2"></span>'.esc_html( $add_button_label ).'</button>'.$custom_button_html.'</div>';
+
+
+    }
+
+    /**
+     * Displays a Single field shortable for a settings field
+     *
+     * @param array $args settings field args
+    */
+    public function callback_shortable( $args ) {
+
+        $values = $this->get_option( $args['id'], $args['section'], $args['std'] );
+
+        $field_options = is_array( $values ) ? array_merge( $values, $args['options'] ) : $args['options'];
+
+        echo '<div class="woolentor-admin-option woolentor-repeater-heading" '.$args['depend'].'>';
+            echo $this->get_field_title( $args );
+            echo $this->get_field_description( $args );
+        echo '</div><div class="woolenor-shortable-fields woolenor-reapeater-fields-area" '.$args['depend'].'>';
+        if ( ! empty( $field_options ) && is_array( $field_options ) ) {
+            echo '<div class="woolentor-option-repeater-item-area">';
+                foreach( $field_options as $key => $value ){
+
+                    $checked = ( is_array( $values ) && array_key_exists( $key, $values ) ) ? $key : '0';
+
+                    $input_fields = sprintf( '<input type="checkbox" class="checkbox" id="woolentor_sp_%1$s[%2$s][%3$s]" name="[%2$s][%3$s]" value="%3$s" %4$s />', $args['section'], $args['id'], $key, checked( $checked, $key, false ) );
+
+                    echo '<div class="woolentor-option-repeater-item" data-depend-id="'.$args['id'].'">';
+
+                    $title_field = isset( $field_options[$key] ) ? $field_options[$key] : '';
+
+                    ?>
+                        <div class="woolentor-option-repeater-tools">
+                            <div class="woolentor-option-repeater-item-title">
+                                <?php 
+                                   echo sprintf( '<label for="woolentor_sp_%1$s[%2$s][%3$s]">%4$s %5$s</label>', $args['section'], $args['id'], $key, $input_fields, esc_html($title_field) );
+                                ?>
+                            </div>
+                        </div>
+                    <?php
+                    echo '</div>';
+                }
+            echo '</div>';
+        }
+
+        echo '</div>';
 
 
     }

@@ -30,7 +30,7 @@ class Help {
 			return;
 		}
 
-		$builder_help_cache = wpforms()->get( 'builder_help_cache' );
+		$builder_help_cache = wpforms()->obj( 'builder_help_cache' );
 		$this->docs         = $builder_help_cache ? $builder_help_cache->get() : [];
 
 		$this->hooks();
@@ -88,51 +88,6 @@ class Help {
 				'docs'  => $this->get_context_docs(),
 			],
 		];
-	}
-
-	/**
-	 * Get docs from the cache.
-	 *
-	 * @since      1.6.3
-	 * @deprecated 1.8.2
-	 *
-	 * @return array Docs data.
-	 * @noinspection PhpUnused, NullPointerExceptionInspection
-	 */
-	public function get_docs() {
-
-		_deprecated_function( __METHOD__, '1.8.2 of the WPForms plugin', 'wpforms()->get( \'builder_help_cache\' )->get()' );
-
-		return wpforms()->get( 'builder_help_cache' )->get();
-	}
-
-	/**
-	 * Update docs cache with actual data retrieved from the remote source.
-	 *
-	 * @since      1.6.3
-	 * @deprecated 1.8.2
-	 *
-	 * @return array|boolean Updated docs data. Or false on error.
-	 * @noinspection PhpUnused, NullPointerExceptionInspection
-	 */
-	public function update_docs() {
-
-		_deprecated_function( __METHOD__, '1.8.2 of the WPForms plugin', 'wpforms()->get( \'builder_help_cache\' )->get()' );
-
-		return wpforms()->get( 'builder_help_cache' )->get();
-	}
-
-	/**
-	 * Schedule docs updates.
-	 *
-	 * @since      1.6.3
-	 * @deprecated 1.8.2
-	 *
-	 * @noinspection PhpUnused
-	 */
-	public function schedule_update_docs() {
-
-		_deprecated_function( __METHOD__, '1.8.2 of the WPForms plugin' );
 	}
 
 	/**
@@ -214,6 +169,7 @@ class Help {
 			'fields/field_options/repeater'           => 'repeater',
 			'settings/general'                        => 'settings',
 			'settings/anti_spam'                      => 'spam',
+			'settings/themes'                         => 'themes',
 			'settings/notifications'                  => 'notification emails',
 			'settings/confirmation'                   => 'confirmation message',
 			'settings/lead_forms'                     => 'lead forms',
@@ -226,23 +182,39 @@ class Help {
 			'settings/form_pages'                     => 'form pages',
 			'settings/save_resume'                    => 'save and resume',
 			'settings/google_sheets'                  => 'google sheets',
+			'settings/dropbox'                        => 'dropbox',
+			'settings/google_calendar'                => 'google calendar',
+			'settings/airtable'                       => 'airtable',
+			'settings/google_drive'                   => 'google drive',
+			'settings/notion'                         => 'notion',
 			'settings/webhooks'                       => 'webhooks',
+			'settings/entry_automation'               => 'entry automation',
+			'settings/pdf'                            => 'pdf',
+			'settings/quiz'                           => 'quiz',
 			'providers'                               => '',
 			'providers/aweber'                        => 'aweber',
 			'providers/activecampaign'                => 'activecampaign',
 			'providers/campaign_monitor'              => 'campaign monitor',
 			'providers/constant_contact'              => 'constant contact',
-			'providers/convertkit'                    => 'convertkit',
+			'providers/convertkit'                    => 'kit',
 			'providers/drip'                          => 'drip',
 			'providers/getresponse'                   => 'getresponse',
 			'providers/getresponse_v3'                => 'getresponse',
 			'providers/mailchimp'                     => 'mailchimp',
 			'providers/mailchimpv3'                   => 'mailchimp',
 			'providers/mailerlite'                    => 'mailerlite',
+			'providers/mailpoet'                      => 'mailpoet',
+			'providers/make'                          => 'make',
+			'providers/n8n'                           => 'n8n',
 			'providers/zapier'                        => 'zapier',
 			'providers/salesforce'                    => 'salesforce',
-			'providers/sendinblue'                    => 'sendinblue',
+			'providers/sendinblue'                    => 'brevo',
+			'providers/slack'                         => 'slack',
 			'providers/hubspot'                       => 'hubspot',
+			'providers/twilio'                        => 'twilio',
+			'providers/pipedrive'                     => 'pipedrive',
+			'providers/zoho_crm'                      => 'zoho crm',
+			'providers/zoho-crm'                      => 'zoho crm',
 			'payments'                                => '',
 			'payments/paypal_commerce'                => 'paypal commerce',
 			'payments/paypal_standard'                => 'paypal standard',
@@ -267,19 +239,23 @@ class Help {
 				'/docs/creating-first-form/',
 				'/docs/how-to-choose-the-right-form-field-for-your-forms/',
 				'/docs/how-to-customize-the-submit-button/',
+				'/docs/generating-forms-with-wpforms-ai/',
 			],
 			'new form'                  => [
 				'/docs/creating-first-form/',
 				'/docs/how-to-choose-the-right-form-field-for-your-forms/',
 				'/docs/how-to-customize-the-submit-button/',
+				'/docs/generating-forms-with-wpforms-ai/',
 			],
 			'create form'               => [
 				'/docs/creating-first-form/',
 				'/docs/how-to-choose-the-right-form-field-for-your-forms/',
 				'/docs/how-to-customize-the-submit-button/',
+				'/docs/generating-forms-with-wpforms-ai/',
 			],
 			'form template'             => [
 				'/docs/how-to-create-a-custom-form-template/',
+				'/docs/generating-forms-with-wpforms-ai/',
 			],
 			'add fields'                => [
 				'/docs/how-to-choose-the-right-form-field-for-your-forms/',
@@ -293,6 +269,9 @@ class Help {
 				'/docs/how-to-install-and-use-custom-captcha-addon-in-wpforms/',
 				'/docs/setting-up-akismet-anti-spam-protection/',
 				'/docs/viewing-and-managing-spam-entries/',
+			],
+			'themes'                    => [
+				'/docs/styling-your-forms/',
 			],
 			'fields'                    => [
 				'/docs/how-to-choose-the-right-form-field-for-your-forms/',
@@ -366,18 +345,21 @@ class Help {
 				'/docs/how-to-customize-form-field-options/',
 				'/docs/how-to-use-conditional-logic-with-wpforms/',
 				'/docs/how-to-customize-the-style-of-individual-form-fields/',
+				'/docs/generating-form-choices-with-wpforms-ai/',
 			],
 			'select'                    => [
 				'/docs/how-to-allow-multiple-selections-to-a-dropdown-field-in-wpforms/',
 				'/docs/how-to-customize-form-field-options/',
 				'/docs/how-to-use-conditional-logic-with-wpforms/',
 				'/docs/how-to-customize-the-style-of-individual-form-fields/',
+				'/docs/generating-form-choices-with-wpforms-ai/',
 			],
 			'multiple options'          => [
 				'/docs/how-to-allow-multiple-selections-to-a-dropdown-field-in-wpforms/',
 				'/docs/how-to-customize-form-field-options/',
 				'/docs/how-to-use-conditional-logic-with-wpforms/',
 				'/docs/how-to-customize-the-style-of-individual-form-fields/',
+				'/docs/generating-form-choices-with-wpforms-ai/',
 			],
 			'bulk add'                  => [
 				'/docs/how-to-bulk-add-choices-for-multiple-choice-checkbox-and-dropdown-fields/',
@@ -408,6 +390,7 @@ class Help {
 				'/docs/how-to-customize-form-field-options/',
 				'/docs/how-to-use-conditional-logic-with-wpforms/',
 				'/docs/how-to-customize-the-style-of-individual-form-fields/',
+				'/docs/generating-form-choices-with-wpforms-ai/',
 			],
 			'radio'                     => [
 				'/docs/how-to-bulk-add-choices-for-multiple-choice-checkbox-and-dropdown-fields/',
@@ -418,6 +401,7 @@ class Help {
 				'/docs/how-to-customize-form-field-options/',
 				'/docs/how-to-use-conditional-logic-with-wpforms/',
 				'/docs/how-to-customize-the-style-of-individual-form-fields/',
+				'/docs/generating-form-choices-with-wpforms-ai/',
 			],
 			'checkboxes'                => [
 				'/docs/how-to-bulk-add-choices-for-multiple-choice-checkbox-and-dropdown-fields/',
@@ -429,6 +413,7 @@ class Help {
 				'/docs/how-to-customize-form-field-options/',
 				'/docs/how-to-use-conditional-logic-with-wpforms/',
 				'/docs/how-to-customize-the-style-of-individual-form-fields/',
+				'/docs/generating-form-choices-with-wpforms-ai/',
 			],
 			'checkbox'                  => [
 				'/docs/how-to-bulk-add-choices-for-multiple-choice-checkbox-and-dropdown-fields/',
@@ -440,6 +425,7 @@ class Help {
 				'/docs/how-to-customize-form-field-options/',
 				'/docs/how-to-use-conditional-logic-with-wpforms/',
 				'/docs/how-to-customize-the-style-of-individual-form-fields/',
+				'/docs/generating-form-choices-with-wpforms-ai/',
 			],
 			'gdpr'                      => [
 				'/docs/how-to-create-gdpr-compliant-forms/',
@@ -976,6 +962,7 @@ class Help {
 				'/docs/how-to-create-conditional-form-notifications-in-wpforms/',
 				'/docs/troubleshooting-email-notifications/',
 				'/docs/how-to-fix-wordpress-contact-form-not-sending-email-with-smtp/',
+				'/docs/pdf-addon/',
 			],
 			'notifications'             => [
 				'/docs/setup-form-notification-wpforms/',
@@ -983,6 +970,7 @@ class Help {
 				'/docs/how-to-create-conditional-form-notifications-in-wpforms/',
 				'/docs/troubleshooting-email-notifications/',
 				'/docs/how-to-fix-wordpress-contact-form-not-sending-email-with-smtp/',
+				'/docs/pdf-addon/',
 			],
 			'notification email'        => [
 				'/docs/setup-form-notification-wpforms/',
@@ -990,6 +978,7 @@ class Help {
 				'/docs/how-to-create-conditional-form-notifications-in-wpforms/',
 				'/docs/troubleshooting-email-notifications/',
 				'/docs/how-to-fix-wordpress-contact-form-not-sending-email-with-smtp/',
+				'/docs/pdf-addon/',
 			],
 			'notification emails'       => [
 				'/docs/setup-form-notification-wpforms/',
@@ -997,6 +986,7 @@ class Help {
 				'/docs/how-to-create-conditional-form-notifications-in-wpforms/',
 				'/docs/troubleshooting-email-notifications/',
 				'/docs/how-to-fix-wordpress-contact-form-not-sending-email-with-smtp/',
+				'/docs/pdf-addon/',
 			],
 			'confirmation'              => [
 				'/docs/setup-form-confirmation-wpforms/',
@@ -1175,6 +1165,15 @@ class Help {
 			'drip'                      => [
 				'/docs/how-to-install-and-use-the-drip-addon-in-wpforms/',
 			],
+			'dropbox'                   => [
+				'/docs/dropbox-addon/',
+			],
+			'google-calendar'           => [
+				'/docs/google-calendar-addon/',
+			],
+			'google-drive'              => [
+				'/docs/google-drive-addon/',
+			],
 			'getresponse'               => [
 				'/docs/how-to-install-and-use-getresponse-addon-with-wpforms/',
 			],
@@ -1188,8 +1187,17 @@ class Help {
 			'mailerlite'                => [
 				'/docs/install-use-mailerlite-addon-wpforms/',
 			],
+			'mailpoet'                  => [
+				'/docs/mailpoet-addon/',
+			],
+			'make'                      => [
+				'/docs/make-addon/',
+			],
 			'zapier'                    => [
 				'/docs/how-to-install-and-use-zapier-addon-with-wpforms/',
+			],
+			'pipedrive'                 => [
+				'/docs/pipedrive-addon/',
 			],
 			'salesforce'                => [
 				'/docs/how-to-install-and-use-the-salesforce-addon-with-wpforms/',
@@ -1197,18 +1205,29 @@ class Help {
 			'sendinblue'                => [
 				'/docs/how-to-install-and-use-the-sendinblue-addon-with-wpforms/',
 			],
+			'slack'                     => [
+				'/docs/slack-addon/',
+			],
 			'hubspot'                   => [
 				'/docs/how-to-install-and-use-the-hubspot-addon-in-wpforms/',
+			],
+			'twilio'                    => [
+				'/docs/twilio-addon/',
+			],
+			'zoho crm'                  => [
+				'/docs/zoho-crm-addon/',
 			],
 			'integrate'                 => [
 				'/docs/how-to-install-and-use-zapier-addon-with-wpforms/',
 				'/docs/how-to-install-and-use-the-webhooks-addon-with-wpforms/',
 				'/docs/google-sheets-addon/',
+				'/docs/n8n-addon/',
 			],
 			'integration'               => [
 				'/docs/how-to-install-and-use-zapier-addon-with-wpforms/',
 				'/docs/how-to-install-and-use-the-webhooks-addon-with-wpforms/',
 				'/docs/google-sheets-addon/',
+				'/docs/n8n-addon/',
 			],
 			'crm'                       => [
 				'/docs/how-to-install-and-use-zapier-addon-with-wpforms/',
@@ -1218,6 +1237,7 @@ class Help {
 				'/docs/how-to-install-and-use-zapier-addon-with-wpforms/',
 				'/docs/how-to-install-and-use-the-webhooks-addon-with-wpforms/',
 				'/docs/google-sheets-addon/',
+				'/docs/n8n-addon/',
 			],
 			'paypal commerce'           => [
 				'/docs/paypal-commerce-addon/',
@@ -1246,6 +1266,28 @@ class Help {
 			'revisions'                 => [
 				'/docs/how-to-use-form-revisions-in-wpforms/',
 			],
+			'ai'                        => [
+				'/docs/generating-form-choices-with-wpforms-ai/',
+				'/docs/generating-forms-with-wpforms-ai/',
+			],
+			'entry automation'          => [
+				'/docs/entry-automation-addon/',
+			],
+			'pdf'                       => [
+				'/docs/pdf-addon/',
+			],
+			'n8n'                       => [
+				'/docs/n8n-addon/',
+			],
+			'notion'                    => [
+				'/docs/notion-addon/',
+			],
+			'airtable'                  => [
+				'/docs/airtable-addon/',
+			],
+			'quiz'                      => [
+				'/docs/quiz-addon/',
+			],
 		];
 	}
 
@@ -1270,35 +1312,6 @@ class Help {
 		}
 
 		return $docs;
-	}
-
-	/**
-	 * Get doc id.
-	 *
-	 * @since 1.6.3
-	 * @deprecated 1.8.3
-	 *
-	 * @param string $link Absolute link to the doc without the domain part.
-	 *
-	 * @return array Array with doc id as element.
-	 */
-	public function get_doc_id( $link ) {
-
-		_deprecated_function( __METHOD__, '1.8.3 of the WPForms plugin', __CLASS__ . '::get_doc_id_int()' );
-
-		if ( empty( $this->docs ) ) {
-			return [];
-		}
-
-		$result = array_filter(
-			$this->docs,
-			static function( $doc ) use ( $link ) {
-
-				return ! empty( $doc['url'] ) && $doc['url'] === 'https://wpforms.com' . $link;
-			}
-		);
-
-		return array_keys( $result );
 	}
 
 	/**

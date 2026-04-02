@@ -34,5 +34,8 @@ if ( ! defined( 'ABSPATH' ) ) {
             <a class="wcv-dismiss-notice button-secondary" data-dismiss="no" href="#"><?php esc_html_e( 'Do not allow', 'wc-vendors' ); ?></a>
         </p>
     </div>
+    <a href="#" class="notice-dismiss wcv-dismiss-notice" style="text-decoration: none;">
+        <span class="screen-reader-text">Dismiss this notice.</span>
+    </a>
     <?php wp_nonce_field( 'wcv_review_notice', 'wcv_review_notice_nonce' ); ?>
 </div>

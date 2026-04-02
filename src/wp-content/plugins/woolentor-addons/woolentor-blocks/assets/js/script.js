@@ -71,7 +71,7 @@
      */
     initSlickSlider: function ($block) {
       $($block).css("display", "block");
-      var settings = $($block).data("settings");
+      var settings = WooLentorBlocks.sanitizeObject($($block).data("settings"));
       if (settings) {
         var arrows = settings["arrows"];
         var dots = settings["dots"];
@@ -139,7 +139,7 @@
     initSlickNavForAsSlider: function ($sliderwrap) {
       $($sliderwrap).find(".woolentor-learg-img").css("display", "block");
       $($sliderwrap).find(".woolentor-thumbnails").css("display", "block");
-      var settings = $($sliderwrap).data("settings");
+      var settings = WooLentorBlocks.sanitizeObject($($sliderwrap).data("settings"));
 
       if (settings) {
         $($sliderwrap)
@@ -194,18 +194,68 @@
       }
     },
 
+    /**
+     * Senitize HTML
+     */
+    sanitizeHTML: function (str) {
+      if( str ){
+        return str.replace(/[&<>"']/g, function (c) {
+            switch (c) {
+                case '&': return '&amp;';
+                case '<': return '&lt;';
+                case '>': return '&gt;';
+                case '"': return '&quot;';
+                case "'": return '&#39;';
+                default: return c;
+            }
+        });
+      }else{
+        return '';
+      }
+    },
+
+    /**
+     * Object Sanitize
+     */
+    sanitizeObject: function (inputObj) {
+      const sanitizedObj = {};
+
+      for (let key in inputObj) {
+          if (inputObj.hasOwnProperty(key)) {
+              let value = inputObj[key];
+  
+              // Sanitize based on the value type
+              if (typeof value === 'string') {
+                  // Sanitize strings to prevent injection
+                  sanitizedObj[key] = WooLentorBlocks.sanitizeHTML(value);
+              } else if (typeof value === 'number') {
+                  // Ensure numbers are valid (you could also set limits if needed)
+                  sanitizedObj[key] = Number.isFinite(value) ? value : 0;
+              } else if (typeof value === 'boolean') {
+                  // Keep boolean values as they are
+                  sanitizedObj[key] = value;
+              } else {
+                  // Handle other types if needed (e.g., arrays, objects)
+                  sanitizedObj[key] = value;
+              }
+          }
+      }
+  
+      return sanitizedObj;
+    },
+
     /*
      * Tool Tip
      */
     woolentorToolTips: function (element, content) {
       if (content == "html") {
-        var tipText = element.html();
+        var tipText = element.text();
       } else {
         var tipText = element.attr("title");
       }
       element.on("mouseover", function () {
         if ($(".woolentor-tip").length == 0) {
-          element.before('<span class="woolentor-tip">' + tipText + "</span>");
+          element.before('<span class="woolentor-tip">' + WooLentorBlocks.sanitizeHTML(tipText) + "</span>");
           $(".woolentor-tip").css("transition", "all 0.5s ease 0s");
           $(".woolentor-tip").css("margin-left", 0);
         }
@@ -253,13 +303,13 @@
           $this.html(
             event.strftime(
               '<div class="cd-single"><div class="cd-single-inner"><h3>%D</h3><p>' +
-                customlavel.daytxt +
+              WooLentorBlocks.sanitizeHTML(customlavel.daytxt) +
                 '</p></div></div><div class="cd-single"><div class="cd-single-inner"><h3>%H</h3><p>' +
-                customlavel.hourtxt +
+                WooLentorBlocks.sanitizeHTML(customlavel.hourtxt) +
                 '</p></div></div><div class="cd-single"><div class="cd-single-inner"><h3>%M</h3><p>' +
-                customlavel.minutestxt +
+                WooLentorBlocks.sanitizeHTML(customlavel.minutestxt) +
                 '</p></div></div><div class="cd-single"><div class="cd-single-inner"><h3>%S</h3><p>' +
-                customlavel.secondstxt +
+                WooLentorBlocks.sanitizeHTML(customlavel.secondstxt) +
                 "</p></div></div>"
             )
           );
@@ -275,7 +325,7 @@
         .find("form.cart")
         .on(
           "click",
-          "span.wl-qunatity-plus, span.wl-qunatity-minus",
+          "span.wl-quantity-plus, span.wl-quantity-minus",
           function () {
             const poductType = $area.data("producttype");
             // Get current quantity values
@@ -296,7 +346,7 @@
             var step = parseFloat(qty.attr("step"));
 
             // Change the value if plus or minus
-            if ($(this).is(".wl-qunatity-plus")) {
+            if ($(this).is(".wl-quantity-plus")) {
               if (max && max <= val) {
                 qty.val(max);
               } else {
@@ -326,12 +376,311 @@
               $(`[data-id="${$target}"]`).slideUp();
           }
       });
-  }
+    },
+
+    /**
+     * Initialize View Switcher for Grid/List Tab Layout
+     */
+    viewSwitcher: function ( $grid, $selector, $style = 'modern' ) {
+      const $viewButtons = $grid.find( '.woolentor-layout-btn' );
+
+      if ( $viewButtons.length === 0 ) {
+        return; // No view switcher, probably grid or list only mode
+      }
+
+      $viewButtons.on( 'click', function( e ) {
+        e.preventDefault();
+
+        const $this = $(this);
+              const layout = $this.data('layout');
+              const $gridContainer = $this.closest('.woolentor-product-grid, .woolentor-filters-enabled').find($selector);
+
+              // console.log($gridContainer,$selector, $this);
+
+              // Update active button state
+              $this.siblings().removeClass('woolentor-active');
+              $this.addClass('woolentor-active');
+
+              // Update grid container layout classes
+              if ($gridContainer.length > 0) {
+                  // Remove existing layout classes from container
+                  $gridContainer.removeClass('woolentor-layout-grid woolentor-layout-list');
+
+                  // Add new layout class to container
+                  $gridContainer.addClass('woolentor-layout-' + layout);
+                  $gridContainer.attr('data-show-layout', layout);
+
+                  // Update product card classes
+                  const $productCards = $gridContainer.find('.woolentor-product-card');
+                  $productCards.removeClass('woolentor-grid-card woolentor-list-card');
+                  
+                  if (layout === 'grid') {
+                    if($style === 'editorial'){
+                        $productCards.removeClass('woolentor-editorial-list-card');
+                        $productCards.addClass('woolentor-editorial-grid-card');
+                    }else if($style === 'magazine'){
+                        $productCards.removeClass('woolentor-magazine-list-card');
+                        $productCards.addClass('woolentor-magazine-grid-card');
+                    }else{
+                        $productCards.addClass('woolentor-grid-card');
+                    }
+                } else if (layout === 'list') {
+                    if($style === 'editorial'){
+                        $productCards.removeClass('woolentor-editorial-grid-card');
+                        $productCards.addClass('woolentor-editorial-list-card');
+                    }else if($style === 'magazine'){
+                        $productCards.removeClass('woolentor-magazine-grid-card');
+                        $productCards.addClass('woolentor-magazine-list-card');
+                    }else{
+                        $productCards.addClass('woolentor-list-card');
+                    }
+                }
+
+              }
+
+
+        // Trigger custom event for potential extensions
+        $grid.trigger( 'woolentor:viewChanged', [ layout ] );
+      });
+    },
+
+    /**
+     * Initialize Quantity Selectors (List View)
+     */
+    quantitySelectors: function( $grid ) {
+      // Plus button
+      $grid.on( 'click', '.woolentor-qty-plus', function( e ) {
+        e.preventDefault();
+
+        const $button = $( this );
+        const $input = $button.siblings( '.woolentor-qty-input' );
+        const currentValue = parseInt( $input.val() ) || 1;
+        const max = parseInt( $input.attr( 'max' ) ) || 999;
+
+        if ( currentValue < max ) {
+          $input.val( currentValue + 1 ).trigger( 'change' );
+        }
+      });
+
+      // Minus button
+      $grid.on( 'click', '.woolentor-qty-minus', function( e ) {
+        e.preventDefault();
+
+        const $button = $( this );
+        const $input = $button.siblings( '.woolentor-qty-input' );
+        const currentValue = parseInt( $input.val() ) || 1;
+        const min = parseInt( $input.attr( 'min' ) ) || 1;
+
+        if ( currentValue > min ) {
+          $input.val( currentValue - 1 ).trigger( 'change' );
+        }
+      });
+
+      // Sync quantity input with add to cart button
+      $grid.on( 'change', '.woolentor-qty-input', function() {
+        const $input = $( this );
+        const quantity = $input.val();
+        const $cartButton = $input.closest( '.woolentor-product-actions' ).find( '.woolentor-cart-btn' );
+
+        if ( $cartButton.length ) {
+          $cartButton.attr( 'data-quantity', quantity );
+        }
+      });
+    },
+
+    /**
+     * LoadMore Product Ajax Action handeler
+     * @param {String} gridArea // gridArea area Selector
+     */
+    loadMore: function( $gridArea ){
+
+      let loadMoreButton = $gridArea.find('.woolentor-load-more-btn');
+
+      if (loadMoreButton.length > 0) {
+
+        loadMoreButton.on('click', function(e) {
+          e.preventDefault();
+      
+          const $button = loadMoreButton;
+          const uniqIdentifire = $button.data('grid-id');
+          const $loader = $button.siblings('.woolentor-ajax-loader');
+          const $grid = $('#' + uniqIdentifire);
+          const currentPage = parseInt($button.data('page'));
+          const maxPages = parseInt($button.data('max-pages'));
+          const dataLayout = $grid.attr('data-show-layout');
+
+          const loadMoreWrapper = $('.' + uniqIdentifire).find('.woolentor-ajax-enabled');
+      
+          if (currentPage > maxPages) {
+            return;
+          }
+      
+          $button.hide();
+          $loader.show();
+      
+        let settings = loadMoreWrapper.attr( 'data-wl-widget-settings' );
+      
+          // Prepare AJAX data
+          const ajaxData = {
+            action: 'woolentor_load_more_products',
+            nonce: typeof window?.woolentorLocalizeData !== 'undefined' ? window?.woolentorLocalizeData.security : '',
+            page: currentPage,
+            settings: settings,
+            viewlayout: typeof dataLayout === 'undefined' ? '' : dataLayout
+          };
+      
+          // AJAX request to load more products
+          $.ajax({
+            url: typeof window?.woolentorLocalizeData !== 'undefined' ? window?.woolentorLocalizeData.ajaxUrl : '',
+            type: 'POST',
+            data: ajaxData,
+            success: function(response) {
+              if (response.success && response.data.html) {
+
+                // Append new products
+                const $newProducts = $(response.data.html);
+                $grid.append($newProducts);
+                  
+                // Update page counter
+                $button.data('page', currentPage+1);
+      
+                // Show button if more pages available
+                if (currentPage < maxPages) {
+                  $button.show();
+                } else {
+                  $button.text($button.data('complete-loadtxt')).prop('disabled', true).show();
+                }
+              }
+              $loader.hide();
+            },
+            error: function(xhr, status, error) {
+              $loader.hide();
+              $button.show();
+              console.log("Status:", status, "Error:", error);
+            }
+          });
+        });
+      }
+
+    },
+
+    infiniteScroll: function($gridArea){
+
+      let selectorBtn = $gridArea.find('.woolentor-infinite-scroll');
+
+      let isLoading = false;
+      const uniqIdentifire = selectorBtn.data('grid-id');
+      const productLoadWrapper = $('.' + uniqIdentifire).find('.woolentor-ajax-enabled');
+      const $loader = selectorBtn.find('.woolentor-ajax-loader');
+      const $grid = $('#' + uniqIdentifire);
+      const paginationArea = productLoadWrapper.find('.woolentor-pagination-infinite');
+
+      function loadMoreOnScroll() {
+          if (isLoading) return;
+
+          // Calculate trigger point based on product grid bottom position
+          const gridOffset = $grid?.offset()?.top;
+          const gridHeight = $grid.outerHeight();
+          const gridBottom = gridOffset + gridHeight;
+          const scrollTop = $(window).scrollTop();
+          const windowHeight = $(window).height();
+          const triggerPoint = gridBottom - windowHeight - 100; // 100px before grid end
+
+          if (scrollTop >= triggerPoint) {
+              const currentPage = parseInt(selectorBtn.data('page'));
+              const maxPages = parseInt(selectorBtn.data('max-pages'));
+
+              if (currentPage > maxPages) {
+                  $(window).off('scroll', loadMoreOnScroll);
+                  return;
+              }
+
+              paginationArea.css('margin-top', '30px');
+              isLoading = true;
+              $loader.show();
+
+              let settings = productLoadWrapper.attr( 'data-wl-widget-settings' );
+              const dataLayout = $grid.attr('data-show-layout');
+
+              // AJAX request to load more products
+              $.ajax({
+                  url: typeof woolentor_addons !== 'undefined' ? woolentor_addons.woolentorajaxurl : '',
+                  type: 'POST',
+                  data: {
+                      action: 'woolentor_load_more_products',
+                      nonce: typeof woolentor_addons !== 'undefined' ? woolentor_addons.ajax_nonce : '',
+                      page: currentPage,
+                      settings: settings,
+                      viewlayout: typeof dataLayout === 'undefined' ? '' : dataLayout
+                  },
+                  success: function(response) {
+                      if (response.success && response.data.html) {
+                          // Append new products
+                          const $newProducts = $(response.data.html);
+                          $grid.append($newProducts);
+
+                          // Update page counter
+                          selectorBtn.data('page', currentPage + 1);
+
+                          // Check if we've reached the last page
+                          if (currentPage > maxPages) {
+                              $(window).off('scroll', loadMoreOnScroll);
+                              selectorBtn.remove();
+                          }
+                      }
+                  },
+                  complete: function() {
+                      $loader.hide();
+                      isLoading = false;
+                      paginationArea.css('margin-top', '0');
+                  },
+                  error: function() {
+                      $loader.hide();
+                      isLoading = false;
+                  }
+              });
+          }
+      }
+
+      // Bind scroll event
+      $(window).on('scroll', loadMoreOnScroll);
+
+    },
+
+    // Product Grid Related Script
+    initProductGridModern: function(){
+      // Initialize all product grids on the page
+      $( "[class*='woolentorblock-'] .woolentor-product-grid" ).each( function() {
+        const $grid = $( this );
+
+        if( $grid.hasClass('woolentor-style-editorial') ) {
+          WooLentorBlocks.viewSwitcher( $grid, '.woolentor-product-grid-editorial', 'editorial' );
+        }else if( $grid.hasClass('woolentor-style-magazine') ) {
+          WooLentorBlocks.viewSwitcher( $grid, '.woolentor-product-grid-magazine', 'magazine' );
+        }else{
+          WooLentorBlocks.viewSwitcher( $grid, '.woolentor-product-grid-modern' );
+        }
+
+        // Quantity Selectors
+        WooLentorBlocks.quantitySelectors( $grid );
+
+        // LoadMore
+        WooLentorBlocks.loadMore($grid);
+
+        // Infinite Scroll
+        WooLentorBlocks.infiniteScroll($grid);
+      });
+
+    }
+
+
+
   };
 
   $(document).ready(function () {
     WooLentorBlocks.init();
     WooLentorBlocks.CartTableHandler();
+    WooLentorBlocks.initProductGridModern();
 
     $("[class*='woolentorblock-'] .product-slider").each(function () {
       WooLentorBlocks.initSlickSlider($(this));
@@ -408,4 +757,10 @@
     },
     false
   );
+
+  // Product Grid Modern Editor Script Run
+  document.addEventListener( "wooLentorProductGridModern", function (event) { WooLentorBlocks.initProductGridModern() }, false );
+  document.addEventListener( "wooLentorProductGridEditorial", function (event) { WooLentorBlocks.initProductGridModern() }, false );
+  document.addEventListener( "wooLentorProductGridMagazine", function (event) { WooLentorBlocks.initProductGridModern() }, false );
+
 })(jQuery, window);

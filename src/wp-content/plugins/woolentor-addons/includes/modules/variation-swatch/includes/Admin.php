@@ -32,12 +32,14 @@ class Admin {
                 wp_enqueue_script( 'wp-color-picker-alpha',  MODULE_ASSETS . '/js/wp-color-picker-alpha.min.js', array( 'wp-color-picker' ), WOOLENTOR_VERSION, true );
             }
 
+            wp_enqueue_media();
+
             // For conditional fields
             wp_enqueue_script('woolentor-jquery-interdependencies');
             wp_enqueue_script('woolentor-condition');
         
             wp_enqueue_style( 'swatchly-admin', MODULE_ASSETS . '/css/admin.css', array(), WOOLENTOR_VERSION );
-            wp_enqueue_script( 'swatchly-admin', MODULE_ASSETS . '/js/admin.js', array('jquery'), WOOLENTOR_VERSION, true );
+            wp_enqueue_script( 'swatchly-admin', MODULE_ASSETS . '/js/admin.js', array('wp-color-picker','jquery'), WOOLENTOR_VERSION, true );
 
             $localize_vars = array();
             if(get_post_type() == 'product'){

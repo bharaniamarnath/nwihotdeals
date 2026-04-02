@@ -1,12 +1,14 @@
 <?php
-
 /**
  * Product meta configurations
  *
+ * @version 2.6.5 - Fix security issues.
+ *
+ * @phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
+ * @phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery
+ * @phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
+ *
  * @package WCVendors
- */
-
-/**
  * WCV_Product_Meta class.
  */
 class WCV_Product_Meta {
@@ -55,6 +57,8 @@ class WCV_Product_Meta {
         add_action( 'wp_ajax_wcv_search_vendors', array( $this, 'search_vendors' ) );
 
         add_filter( 'posts_clauses', array( $this, 'filter_by_vendor' ) );
+
+        add_action( 'save_post', array( $this, 'update_author_for_variations' ), 10, 3 );
     }
 
     /**
@@ -69,7 +73,7 @@ class WCV_Product_Meta {
             return;
         }
 
-        wp_enqueue_script( 'wcv-vendor-select', WCV_ASSETS_URL . 'js/admin/wcv-vendor-select.js', array( 'select2' ), WCV_VERSION, true );
+        wp_enqueue_script( 'wcv-vendor-select', WCV_ASSETS_URL . 'js/admin/wcv-vendor-select.js', array( wcv_get_select2_script_handle() ), WCV_VERSION, true );
         wp_localize_script(
             'wcv-vendor-select',
             'wcv_vendor_select',
@@ -106,6 +110,7 @@ class WCV_Product_Meta {
      * @return string
      * @version 2.2.2
      * @since   2.2.2
+     * @since   2.6.6 - Hide tax class field in variations.
      */
     public function get_inline_style() {
         $product_misc = self::get_product_capabilities();
@@ -114,6 +119,14 @@ class WCV_Product_Meta {
         // Filter taxes.
         if ( ! empty( $product_misc['taxes'] ) ) {
             $css .= '.form-field._tax_status_field, .form-field._tax_class_field{display:none !important;}';
+            // Hide tax class field in variations.
+            $css .= '.woocommerce_variation .form-row select[name^="variable_tax_class"]{display:none !important;}';
+            $css .= '.woocommerce_variation .form-row label[for^="variable_tax_class"]{display:none !important;}';
+        }
+        // Filter SKU field in variations.
+        if ( ! empty( $product_misc['sku'] ) ) {
+            $css .= '.woocommerce_variation .form-row input[name^="variable_sku"]{display:none !important;}';
+            $css .= '.woocommerce_variation .form-row label[for^="variable_sku"]{display:none !important;}';
         }
         // Filter the rest of the fields.
         foreach ( $product_misc as $key => $value ) {
@@ -317,14 +330,15 @@ class WCV_Product_Meta {
         }
 
         if ( isset( $_POST['pv_commission_rate'] ) ) {
-            $commission_rate = is_numeric( sanitize_text_field( wp_unslash( $_POST['pv_commission_rate'] ) ) )
-                ? (float) sanitize_text_field( wp_unslash( $_POST['pv_commission_rate'] ) )
-                : false;
-            update_post_meta(
-                $post_id,
-                'pv_commission_rate',
-                $commission_rate
-            );
+            $commission_rate = sanitize_text_field( wp_unslash( $_POST['pv_commission_rate'] ) );
+            $commission_rate = str_replace( wc_get_price_decimal_separator(), '.', $commission_rate );
+            $commission_rate = (float) $commission_rate;
+
+            if ( is_numeric( $commission_rate ) && $commission_rate >= 0 && $commission_rate <= 100 ) {
+                update_post_meta( $post_id, 'pv_commission_rate', $commission_rate );
+            } else {
+                delete_post_meta( $post_id, 'pv_commission_rate' );
+            }
         }
     }
 
@@ -370,6 +384,8 @@ class WCV_Product_Meta {
 
         global $post;
         wp_nonce_field( 'wcv-save-product-meta', 'wcv-product-meta-nonce' );
+        $commission_rate = get_post_meta( $post->ID, 'pv_commission_rate', true );
+        $commission_rate = is_numeric( $commission_rate ) && $commission_rate >= 0 && $commission_rate <= 100 ? WC_Vendors\Classes\Admin\wcv_format_commission_rate_from_decimal_to_wc_sep( $commission_rate ) : '0';
         ?>
 
         <div id="commission" class="panel woocommerce_options_panel">
@@ -378,15 +394,12 @@ class WCV_Product_Meta {
                 <p class='form-field commission_rate_field'>
                     <label for='pv_commission_rate'><?php esc_attr_e( 'Commission', 'wc-vendors' ); ?> (%)</label>
                     <input
-                        type='number'
+                        type='text'
                         id='pv_commission_rate'
                         name='pv_commission_rate'
-                        class='short'
-                        max="100"
-                        min="0"
-                        step='any'
+                        class='short wcv-commission-rate-input wcvendors_vendor_commission_rate'
                         placeholder='<?php esc_attr_e( 'Leave blank for default', 'wc-vendors' ); ?>'
-                        value="<?php echo esc_attr( get_post_meta( $post->ID, 'pv_commission_rate', true ) ); ?>"
+                        value="<?php echo esc_attr( $commission_rate ); ?>"
                     />
                 </p>
 
@@ -474,8 +487,8 @@ class WCV_Product_Meta {
 
         if ( $product->is_type( 'simple' ) || $product->is_type( 'external' ) ) {
 
-            if ( isset( $_REQUEST['_vendor'] ) && '' !== $_REQUEST['vendor'] ) {
-                $vendor            = wc_clean( $_REQUEST['_vendor'] );
+            if ( isset( $_REQUEST['_vendor'] ) && '' !== sanitize_text_field( wp_unslash( $_REQUEST['_vendor'] ) ) ) {
+                $vendor            = sanitize_text_field( wp_unslash( $_REQUEST['_vendor'] ) );
                 $post              = get_post( $product->get_id() );
                 $post->post_author = $vendor;
             }
@@ -484,6 +497,7 @@ class WCV_Product_Meta {
         if ( isset( $_REQUEST['product_media_author_override'] ) ) {
             $this->save_product_media( $product );
         }
+
         return $product;
     }
 
@@ -542,12 +556,12 @@ class WCV_Product_Meta {
             return;
         }
 
-        if ( ! isset( $_REQUEST['vendor'] ) || ( isset( $_REQUEST['vendor'] ) && '' === $_REQUEST['vendor'] ) ) {
+        if ( ! isset( $_REQUEST['vendor'] ) || ( isset( $_REQUEST['vendor'] ) && '' === sanitize_text_field( wp_unslash( $_REQUEST['vendor'] ) ) ) ) {
             return;
         }
 
-        if ( isset( $_REQUEST['vendor'] ) && '' !== $_REQUEST['vendor'] ) {
-            $vendor        = wc_clean( $_REQUEST['vendor'] );
+        if ( isset( $_REQUEST['vendor'] ) && '' !== sanitize_text_field( wp_unslash( $_REQUEST['vendor'] ) ) ) {
+            $vendor        = sanitize_text_field( wp_unslash( $_REQUEST['vendor'] ) );
             $update_vendor = array(
                 'ID'          => $product->get_id(),
                 'post_author' => $vendor,
@@ -697,7 +711,7 @@ class WCV_Product_Meta {
         $search_string = '%' . $search_string . '%';
 
         $response          = new stdClass();
-        $response->results = $wpdb->get_results(
+        $response->results = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
             $wpdb->prepare(
                 "SELECT DISTINCT ID as `id`, display_name as `text`
                 FROM  $wpdb->users
@@ -736,7 +750,7 @@ class WCV_Product_Meta {
 
         foreach ( $response->results as $key => $vendor ) {
             $text      = $vendor->text;
-            $shop_name = $wpdb->get_var(
+            $shop_name = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
                 $wpdb->prepare(
                     "SELECT meta_value
                     FROM $wpdb->usermeta
@@ -803,5 +817,57 @@ class WCV_Product_Meta {
                 'featured'  => wc_string_to_bool( get_option( 'wcvendors_capability_product_featured', 'no' ) ),
             )
         );
+    }
+
+    /**
+     * Update the author for variations
+     *
+     * @param int     $post_id The post ID.
+     * @param WP_Post $post    The post object.
+     * @param bool    $update  Whether this is an existing post being updated.
+     *
+     * @return void
+     * @since 2.5.2
+     */
+    public function update_author_for_variations( $post_id, $post, $update ) {
+
+        if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
+            return;
+        }
+
+        if ( 'product' !== $post->post_type ) {
+            return;
+        }
+
+        $post_author = (int) $post->post_author;
+
+        if ( ! WCV_Vendors::is_vendor( $post_author ) ) {
+            return;
+        }
+
+        if ( ! $update ) {
+            return;
+        }
+
+        $product = wc_get_product( $post_id );
+
+        if ( ! $product->is_type( 'variable' ) ) {
+            return;
+        }
+
+        $children = $product->get_children();
+
+        if ( empty( $children ) ) {
+            return;
+        }
+
+        foreach ( $children as $child_id ) {
+            wp_update_post(
+                array(
+                    'ID'          => $child_id,
+                    'post_author' => $post->post_author,
+                )
+            );
+        }
     }
 }

@@ -1,9 +1,18 @@
 <?php
 
+// phpcs:ignore Generic.Commenting.DocComment.MissingShort
+/** @noinspection PhpDeprecationInspection */
+
 namespace WPForms\Emails;
 
+use DOMDocument;
+use WPForms\SmartTags\SmartTag\SmartTag;
 use WPForms_WP_Emails;
 use WPForms\Tasks\Actions\EntryEmailsTask;
+use WPForms\Emails\Templates\General; // phpcs:ignore WPForms.PHP.UseStatement.UnusedUseStatement
+use WPForms\Pro\Emails\Templates\Modern;
+use WPForms\Pro\Emails\Templates\Elegant;
+use WPForms\Pro\Emails\Templates\Tech;
 
 /**
  * Class Notifications.
@@ -65,7 +74,7 @@ class Notifications extends Mailer {
 	 *
 	 * @var string
 	 */
-	protected $field_template;
+	protected $field_template = '';
 
 	/**
 	 * Default email template name.
@@ -74,7 +83,7 @@ class Notifications extends Mailer {
 	 *
 	 * @var string
 	 */
-	const DEFAULT_TEMPLATE = 'classic';
+	public const DEFAULT_TEMPLATE = 'classic';
 
 	/**
 	 * Plain/Text email template name.
@@ -83,7 +92,7 @@ class Notifications extends Mailer {
 	 *
 	 * @var string
 	 */
-	const PLAIN_TEMPLATE = 'none';
+	public const PLAIN_TEMPLATE = 'none';
 
 	/**
 	 * Legacy email template name.
@@ -92,7 +101,16 @@ class Notifications extends Mailer {
 	 *
 	 * @var string
 	 */
-	const LEGACY_TEMPLATE = 'default';
+	public const LEGACY_TEMPLATE = 'default';
+
+	/**
+	 * Whether the email is being sent to a PDF.
+	 *
+	 * @since 1.9.7.3
+	 *
+	 * @var string
+	 */
+	public $rendering_context;
 
 	/**
 	 * Get the instance of a class.
@@ -118,11 +136,15 @@ class Notifications extends Mailer {
 	 *
 	 * @since 1.8.5
 	 *
-	 * @param string $template Email template name.
+	 * @param string $template          Email template name.
+	 * @param string $rendering_context Where the email is being rendered, 'mail' or 'pdf'.
 	 *
 	 * @return $this|WPForms_WP_Emails
+	 * @noinspection PhpDeprecationInspection
 	 */
-	public function init( $template = '' ) {
+	public function init( string $template = '', string $rendering_context = 'mail' ) {
+
+		$this->rendering_context = $rendering_context;
 
 		// Add hooks.
 		$this->hooks();
@@ -136,13 +158,13 @@ class Notifications extends Mailer {
 			return $this;
 		}
 
-		// In case user is still using the old "Legacy" default template, use the old class.
+		// In case the user is still using the old "Legacy" default template, use the old class.
 		// Use the old class if the current template is "Legacy".
 		if ( $this->current_template === self::LEGACY_TEMPLATE ) {
 			return new WPForms_WP_Emails();
 		}
 
-		// Plain text and other html templates will use the current class.
+		// Plain text and other HTML templates will use the current class.
 		return $this;
 	}
 
@@ -151,9 +173,10 @@ class Notifications extends Mailer {
 	 *
 	 * @since 1.9.0
 	 */
-	private function hooks() {
+	private function hooks(): void {
 
 		add_filter( 'wpforms_smart_tags_formatted_field_value', [ $this, 'get_multi_field_formatted_value' ], 10, 4 );
+		add_filter( 'wpforms_smarttags_process_value', [ self::class, 'filter_smarttags_process_value' ], PHP_INT_MAX, 6 );
 	}
 
 	/**
@@ -178,9 +201,9 @@ class Notifications extends Mailer {
 		}
 
 		// Set the arguments.
-		list( $to, $subject, $message ) = func_get_args();
+		[ $to, $subject, $message ] = func_get_args();
 
-		// Don't send if email address is invalid.
+		// Don't send it if the email address is invalid.
 		if ( ! is_email( $to ) ) {
 			return false;
 		}
@@ -200,6 +223,12 @@ class Notifications extends Mailer {
 		// Set the attachments to an empty array.
 		// We will set the attachments later in the filter.
 		$attachments = [];
+
+		/**
+		 * Preliminary set the unfiltered recipient email address.
+		 * It will be used in get_headers() while resolving smart tags.
+		 */
+		$this->to_email( $to );
 
 		/**
 		 * Filter the email data before sending.
@@ -236,6 +265,8 @@ class Notifications extends Mailer {
 		// Set the attachments to the email.
 		$this->__set( 'attachments', $data['attachments'] );
 
+		$entry_obj = wpforms()->obj( 'entry' );
+
 		/**
 		 * Filter whether to send the email in the same process.
 		 *
@@ -255,7 +286,7 @@ class Notifications extends Mailer {
 			'wpforms_tasks_entry_emails_trigger_send_same_process',
 			false,
 			$this->fields,
-			! empty( wpforms()->get( 'entry' ) ) ? wpforms()->get( 'entry' )->get( $this->entry_id ) : [],
+			$entry_obj ? $entry_obj->get( $this->entry_id ) : [],
 			$this->form_data,
 			$this->entry_id,
 			'entry'
@@ -298,7 +329,7 @@ class Notifications extends Mailer {
 	 *
 	 * @param string $message Email message.
 	 */
-	private function process_email_template( $message ) {
+	public function process_email_template( string $message ): void {
 
 		$template = self::get_available_templates( $this->current_template );
 
@@ -308,16 +339,30 @@ class Notifications extends Mailer {
 			return;
 		}
 
-		// Set the email template, i.e. WPForms\Emails\Templates\Classic.
+		// Set the email template, i.e., WPForms\Emails\Templates\Classic.
 		$this->template( new $template['path']( '', false, $this->current_template ) );
 
+		/**
+		 * Email template.
+		 *
+		 * @var General $email_template
+		 */
+		$email_template = $this->__get( 'template' );
+
+		if (
+			! method_exists( $email_template, 'get_field_template' ) ||
+			! method_exists( $email_template, 'set_field' )
+		) {
+			return;
+		}
+
 		// Set the field template.
-		$this->field_template = $this->template->get_field_template();
+		$this->field_template = $email_template->get_field_template();
 
 		// Set the email template fields.
-		$this->template->set_field( $this->process_message( $message ) );
+		$email_template->set_field( $this->process_message( $message ) );
 
-		$content = $this->template->get();
+		$content = $email_template->get();
 
 		// Return if the template is empty.
 		if ( ! $content ) {
@@ -355,21 +400,10 @@ class Notifications extends Mailer {
 	 */
 	private function process_message( $message ) {
 
-		// Check if the placeholder '{all_fields}' is not present in the message.
-		if ( strpos( $message, '{all_fields}' ) === false ) {
-			// Wrap the message with a table row after processing tags.
-			$message = $this->wrap_content_with_table_row( $message );
-		} else {
-			// If {all_fields} is present, extract content before and after into separate variables.
-			list( $before, $after ) = array_map( 'trim', explode( '{all_fields}', $message, 2 ) );
+		$message = $this->process_tag( $message );
 
-			// Wrap before and after content with <tr> tags if they are not empty to maintain styling.
-			// Note that whatever comes after the {all_fields} should be wrapped in a table row to avoid content misplacement.
-			$before_tr = ! empty( $before ) ? $this->wrap_content_with_table_row( $before ) : '';
-			$after_tr  = ! empty( $after ) ? $this->wrap_content_with_table_row( $after ) : '';
-
-			// Replace {all_fields} with $this->process_field_values() output.
-			$message = $before_tr . $this->process_field_values() . $after_tr;
+		if ( strpos( $message, '{all_fields}' ) !== false ) {
+			$message = str_replace( '{all_fields}', $this->process_field_values(), $message );
 		}
 
 		/**
@@ -382,14 +416,33 @@ class Notifications extends Mailer {
 		 * @param string        $template The email template name.
 		 * @param Notifications $this     The instance of the "Notifications" class.
 		 */
-		$message = apply_filters( 'wpforms_emails_notifications_message', $message, $this->current_template, $this );
+		$message = (string) apply_filters( 'wpforms_emails_notifications_message', $message, $this->current_template, $this );
+
+		$message = $this->fix_table_body_markup( $message );
 
 		// Leave early if the template is set to plain text.
 		if ( Helpers::is_plain_text_template( $this->current_template ) ) {
 			return $message;
 		}
 
-		return make_clickable( str_replace( "\r\n", '<br/>', $message ) );
+		/**
+		 * Filter and modify the processed email message content before sending.
+		 * This filter allows customizing the processed email message content for notifications.
+		 *
+		 * @since 1.9.9
+		 *
+		 * @param string        $processed_message The processed email message to be sent out.
+		 * @param string        $message           The email message before processing.
+		 * @param Notifications $this              The instance of the "Notifications" class.
+		 *
+		 * @return string The processed email message to be sent out.
+		 */
+		return (string) apply_filters(
+			'wpforms_emails_notifications_processed_message',
+			make_clickable( str_replace( "\r\n", '<br/>', $message ) ), // TODO: Replacing line breaks may not work as expected. Needs further investigation.
+			$message,
+			$this
+		);
 	}
 
 	/**
@@ -398,6 +451,7 @@ class Notifications extends Mailer {
 	 * @since 1.8.5
 	 *
 	 * @return string
+	 * @noinspection PhpUnusedLocalVariableInspection
 	 */
 	private function process_field_values() {
 
@@ -437,7 +491,51 @@ class Notifications extends Mailer {
 			$message = $this->process_html_message( $show_empty_fields );
 		}
 
-		return empty( $message ) ? $default_message : $message;
+		/**
+		 * Filter the email message content before sending.
+		 *
+		 * @since 1.9.7.3
+		 *
+		 * @param string $message  The email message to be sent out.
+		 * @param string $template The email template name.
+		 * @param Mailer $this     The instance of the "Notifications" class.
+		 */
+		return empty( $message ) ? $default_message : apply_filters( 'wpforms_emails_notifications_process_field_values_message', $message, $this->current_template, $this );
+	}
+
+	/**
+	 * Get processed field values.
+	 *
+	 * @since 1.9.7.3
+	 *
+	 * @return string
+	 */
+	public function get_processed_field_values(): string {
+
+		$template = self::get_available_templates( $this->current_template );
+
+		// Return if the template is not set.
+		// This can happen if the template is not found or if the template class doesn't exist.
+		if ( ! isset( $template['path'] ) || ! class_exists( $template['path'] ) ) {
+			return '';
+		}
+
+		// Set the email template, i.e., WPForms\Emails\Templates\Classic.
+		$this->template( new $template['path']( '', false, $this->current_template ) );
+
+		$email_template = $this->__get( 'template' );
+
+		if (
+			! method_exists( $email_template, 'get_field_template' ) ||
+			! method_exists( $email_template, 'set_field' )
+		) {
+			return '';
+		}
+
+		$this->field_template = $email_template->get_field_template();
+		$field_values         = trim( $this->process_field_values() );
+
+		return make_clickable( $field_values );
 	}
 
 	/**
@@ -580,6 +678,7 @@ class Notifications extends Mailer {
 	 * @param bool $show_empty_fields Whether to display empty fields in the email.
 	 *
 	 * @return string
+	 * @noinspection PhpUnusedLocalVariableInspection
 	 */
 	private function process_html_message( $show_empty_fields = false ) { // phpcs:ignore Generic.Metrics.CyclomaticComplexity
 
@@ -649,7 +748,9 @@ class Notifications extends Mailer {
 			 * @param array         $fields            List of submitted fields.
 			 * @param Notifications $notifications     Notifications instance.
 			 */
-			$message .= apply_filters( 'wpforms_emails_notifications_field_message_html', $field_message, $field, $show_empty_fields, $other_fields, $this->form_data, $this->fields, $this );
+			$field_message = (string) apply_filters( 'wpforms_emails_notifications_field_message_html', $field_message, $field, $show_empty_fields, $other_fields, $this->form_data, $this->fields, $this );
+
+			$message .= trim( $field_message );
 		}
 
 		return $message;
@@ -675,12 +776,19 @@ class Notifications extends Mailer {
 		if ( empty( $this->fields[ $field_id ] ) ) {
 			// Check if the field type is in $other_fields, otherwise skip.
 			// Skip if the field is conditionally hidden.
-			if ( empty( $other_fields ) || ! in_array( $field_type, $other_fields, true ) || wpforms_conditional_logic_fields()->field_is_hidden( $this->form_data, $field_id ) ) {
+			if (
+				empty( $other_fields ) ||
+				! in_array( $field_type, $other_fields, true ) ||
+				(
+					wpforms()->is_pro() &&
+					wpforms_conditional_logic_fields()->field_is_hidden( $this->form_data, $field_id )
+				)
+			) {
 				return '';
 			}
 
 			// Handle specific field types.
-			list( $field_name, $field_val ) = $this->process_special_field_values( $field );
+			[ $field_name, $field_val ] = $this->process_special_field_values( $field );
 		} else {
 			// Handle fields that are not empty in $this->fields.
 			if ( ! $show_empty_fields && ( ! isset( $this->fields[ $field_id ]['value'] ) || (string) $this->fields[ $field_id ]['value'] === '' ) ) {
@@ -700,8 +808,26 @@ class Notifications extends Mailer {
 			$field_name = $this->get_default_field_name( $field_id );
 		}
 
+		/**
+		 * Filter the field name before it is added to the email message.
+		 *
+		 * @since 1.9.1
+		 *
+		 * @param string $field_name Field name.
+		 * @param array  $field      Field data.
+		 * @param array  $form_data  Form data.
+		 * @param string $context    Context of the field name.
+		 */
+		$field_name = (string) apply_filters( // phpcs:ignore WPForms.PHP.ValidateHooks.InvalidHookName
+			'wpforms_html_field_name',
+			$field_name,
+			$this->fields[ $field_id ] ?? $field,
+			$this->form_data,
+			'email-html'
+		);
+
 		/** This filter is documented in src/SmartTags/SmartTag/FieldHtmlId.php.*/
-		$field_val = apply_filters( // phpcs:ignore WPForms.PHP.ValidateHooks.InvalidHookName
+		$field_val = (string) apply_filters( // phpcs:ignore WPForms.PHP.ValidateHooks.InvalidHookName
 			'wpforms_html_field_value',
 			$field_val,
 			$this->fields[ $field_id ] ?? $field,
@@ -709,16 +835,13 @@ class Notifications extends Mailer {
 			'email-html'
 		);
 
-		// If it's not and RTE field - replace new lines with <br/> tags.
-		if ( $field_type !== 'richtext' ) {
-			$field_val = str_replace( [ "\r\n", "\r", "\n" ], '<br/>', $field_val );
-		}
+		$field_val = str_replace( [ "\r\n", "\r", "\n" ], '<br/>', $field_val );
 
 		// Replace the payment total value if an order summary is enabled.
 		// Ideally, it could be done through the `wpforms_html_field_value` filter,
-		// but needed data is missed there, e.g. entry data ($this->fields).
+		// but necessary data is missed there, e.g., entry data ($this->fields).
 		if ( $field_type === 'payment-total' && ! empty( $field['summary'] ) ) {
-			$field_val = $this->process_tag( '{order_summary}' );
+			$field_val = $this->get_payment_total_value( $field_val );
 		}
 
 		// Append the field item to the message.
@@ -727,6 +850,20 @@ class Notifications extends Mailer {
 			[ $field_type, $field_name, $field_val ],
 			$this->field_template
 		);
+	}
+
+	/**
+	 * Get payment total value.
+	 *
+	 * @since 1.9.3
+	 *
+	 * @param string $value Field value.
+	 *
+	 * @return string
+	 */
+	private function get_payment_total_value( string $value ): string {
+
+		return $this->process_tag( '{order_summary}' ) . '<span class="wpforms-payment-total">' . $value . '</span>';
 	}
 
 	/**
@@ -751,13 +888,133 @@ class Notifications extends Mailer {
 	 *
 	 * @since 1.8.5
 	 *
-	 * @param string $input Smart tag.
+	 * @param string $input   Smart tag.
+	 * @param string $context Context of the smart tag.
 	 *
 	 * @return string
 	 */
-	private function process_tag( $input = '' ) {
+	private function process_tag( $input = '', $context = 'notification' ): string {
 
-		return wpforms_process_smart_tags( $input, $this->form_data, $this->fields, $this->entry_id, 'notification' );
+		$context_data = [];
+
+		/**
+		 * Email(s).
+		 *
+		 * @var string|string[] $to_email
+		 */
+		$to_email                 = array_filter( (array) ( $this->__get( 'to_email' ) ?? '' ) );
+		$context_data['to_email'] = $to_email;
+
+		return wpforms_process_smart_tags( $input, $this->form_data, $this->fields, (string) $this->entry_id, $context, $context_data );
+	}
+
+	/**
+	 * Filter the smart tag value for the mailer email addresses.
+	 *
+	 * @since 1.9.5
+	 *
+	 * @param string|mixed $value            Smart Tag value.
+	 * @param string       $tag_name         Smart tag name.
+	 * @param array        $form_data        Form data.
+	 * @param array        $fields           List of fields.
+	 * @param int          $entry_id         Entry ID.
+	 * @param SmartTag     $smart_tag_object The smart tag object or the Generic object for those cases when class
+	 *                                       unregistered.
+	 *
+	 * @return string|null
+	 * @noinspection PhpMissingParamTypeInspection
+	 * @noinspection PhpUnusedParameterInspection
+	 */
+	public static function filter_smarttags_process_value( $value, $tag_name, $form_data, $fields, $entry_id, $smart_tag_object ): ?string {
+
+		$tag_name = (string) $tag_name;
+		$fields   = (array) $fields;
+
+		// Smart tag isn't registered and can be replaced via filters.
+		if ( $value === null ) {
+			return null;
+		}
+
+		$value        = (string) $value;
+		$context      = $smart_tag_object->context ?? '';
+		$allowed_tags = [
+			'admin_email',
+			'user_email',
+		];
+
+		// In these contexts, we need to check if the smart tag is allowed.
+		$address_context = [
+			'notification-from',
+		];
+
+		// Check if the smart tag is allowed AND if the context is allowed.
+		if ( in_array( $tag_name, $allowed_tags, true ) || ! in_array( $context, $address_context, true ) ) {
+			return $value;
+		}
+
+		return self::validate_notification_email_smart_tags( $value, $tag_name, $fields, $smart_tag_object );
+	}
+
+	/**
+	 * Validate notification email fields.
+	 *
+	 * @since 1.9.5
+	 *
+	 * @param string|mixed $value            Smart Tag value.
+	 * @param string       $tag_name         Smart tag name.
+	 * @param array        $fields           List of fields.
+	 * @param SmartTag     $smart_tag_object The smart tag object or the Generic object for those cases when class unregistered.
+	 *
+	 * @return string
+	 */
+	private static function validate_notification_email_smart_tags( string $value, string $tag_name, array $fields, SmartTag $smart_tag_object ): string {
+
+		$field_id = self::get_smart_tag_field_id( $tag_name, $smart_tag_object );
+
+		// Empty value for all non-field smart tags.
+		if ( $field_id === null || $field_id === '' || ! isset( $fields[ $field_id ]['type'] ) ) {
+			return '';
+		}
+
+		$field_type = $fields[ $field_id ]['type'];
+
+		// If the field type is Email, return the value.
+		if ( $field_type === 'email' ) {
+			return $value;
+		}
+
+		// Allow the Name field value in the Reply To setting.
+		if ( $field_type === 'name' && $smart_tag_object->context === 'notification-reply-to' ) {
+			return $value;
+		}
+
+		// Otherwise, return an empty string if the value is not an email.
+		return wpforms_is_email( $value ) ? $value : '';
+	}
+
+	/**
+	 * Get smart tag field ID.
+	 *
+	 * @since 1.9.5
+	 *
+	 * @param string   $tag_name         Smart tag name.
+	 * @param SmartTag $smart_tag_object The smart tag object or the Generic object for those cases when class unregistered.
+	 *
+	 * @return mixed|string|null
+	 */
+	private static function get_smart_tag_field_id( string $tag_name, SmartTag $smart_tag_object ) {
+
+		if ( $tag_name === 'field_value_id' ) {
+			return $smart_tag_object->get_attributes()[ $tag_name ] ?? null;
+		}
+
+		if ( $tag_name !== 'field_id' ) {
+			return null;
+		}
+
+		$field_id_parts = explode( '|', $smart_tag_object->get_attributes()['field_id'] ?? '' );
+
+		return $field_id_parts[0] ?? null;
 	}
 
 	/**
@@ -783,7 +1040,7 @@ class Notifications extends Mailer {
 				break;
 
 			case 'pagebreak':
-				// Skip if position is 'bottom'.
+				// Skip if the position is 'bottom'.
 				if ( ! empty( $field['position'] ) && $field['position'] === 'bottom' ) {
 					break;
 				}
@@ -799,7 +1056,7 @@ class Notifications extends Mailer {
 
 			case 'content':
 				$field_name = esc_html__( 'Content', 'wpforms-lite' );
-				$field_val  = $field['content'];
+				$field_val  = wpforms_esc_richtext_field( $field['content'] );
 				break;
 
 			default:
@@ -812,7 +1069,7 @@ class Notifications extends Mailer {
 	}
 
 	/**
-	 * Get the email reply to address.
+	 * Get the email reply to the address.
 	 * This method has been overridden to add support for the Reply-to Name.
 	 *
 	 * @since 1.8.5
@@ -826,6 +1083,10 @@ class Notifications extends Mailer {
 
 		if ( ! empty( $reply_to ) ) {
 
+			// \h: With the u modifier escape sequence matches any horizontal whitespace character,
+			// which includes the non-breaking and zero width spaces.
+			$reply_to = preg_replace( '/\h/u', ' ', $reply_to );
+
 			// Optional custom format with a Reply-to Name specified: John Doe <john@doe.com>
 			// - starts with anything,
 			// - followed by space,
@@ -838,7 +1099,7 @@ class Notifications extends Mailer {
 				$reply_to      = trim( $matches[2], '<> ' );
 			}
 
-			$reply_to = $this->process_tag( $reply_to );
+			$reply_to = $this->process_tag( $reply_to, 'notification-reply-to' );
 
 			if ( ! is_email( $reply_to ) ) {
 				$reply_to      = false;
@@ -867,18 +1128,19 @@ class Notifications extends Mailer {
 	 *
 	 * @since 1.8.5
 	 *
-	 * @param string $input String to sanitize and process for smart tags.
+	 * @param string $input   String to sanitize and process for smart tags.
+	 * @param string $context Context of the smart tag.
 	 *
 	 * @return string
 	 */
-	public function sanitize( $input = '' ) {
+	public function sanitize( $input = '', $context = 'notification' ): string {
 
-		return wpforms_decode_string( $this->process_tag( $input ) );
+		return wpforms_decode_string( $this->process_tag( $input, $context ) );
 	}
 
 	/**
 	 * Get the email content type.
-	 * This method has been overridden to better declare email template assigned to each notification.
+	 * This method has been overridden to better declare the email template assigned to each notification.
 	 *
 	 * @since 1.8.5.2
 	 *
@@ -954,71 +1216,83 @@ class Notifications extends Mailer {
 	}
 
 	/**
-	 * Wrap the given content with a table row.
-	 * This method has been added for styling purposes.
+	 * Wrap content in the 'tr' tag on the first level depth.
 	 *
-	 * @since 1.8.6
+	 * @since 1.9.6
 	 *
 	 * @param string $content Processed smart tag content.
 	 *
 	 * @return string
 	 */
-	private function wrap_content_with_table_row( $content ) { // phpcs:ignore Generic.Metrics.CyclomaticComplexity.TooHigh
+	private function fix_table_body_markup( string $content ): string {
 
-		// If the content is empty, return it as is.
-		if ( empty( $content ) ) {
-			return $content;
+		$content = trim( $content );
+
+		libxml_use_internal_errors( true );
+
+		$dom = new DOMDocument( '1.0', 'UTF-8' );
+
+		// We should encode `<` and `>` symbols to prevent unexpected HTML tags.
+		$html = '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>' . wp_pre_kses_less_than( $content ) . '</body></html>';
+
+		$dom->loadHTML( $html, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD | LIBXML_NOERROR );
+
+		libxml_clear_errors();
+
+		$body = $dom->getElementsByTagName( 'body' )->item( 0 );
+
+		if ( ! $body ) {
+			return $this->wrap_content_with_row( $content );
 		}
 
-		// Process the smart tags in the content.
-		$processed_content = $this->process_tag( $content );
-
-		// If the content doesn't contain any smart tags, wrap it in a table row, and return early.
-		// Don't go beyond this point if the content doesn't contain any smart tags.
-		if ( ! preg_match( '/{\w+}/', $processed_content ) ) {
-			return '<tr class="smart-tag"><td class="field-name field-value" colspan="2">' . $processed_content . '</td></tr>';
-		}
-
-		// Split the content into lines and remove empty lines.
-		$lines = array_filter( explode( "\n", $content ), 'strlen' );
-
-		// Initialize an empty string to store the modified content.
 		$modified_content = '';
+		$content_to_wrap  = '';
 
-		// Iterate through each line.
-		foreach ( $lines as $line ) {
-			// Trim the line.
-			$trimmed_line = $this->process_tag( trim( $line ) );
+		// phpcs:disable WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
+		foreach ( $body->childNodes as $node ) {
+			$node_text = $node->nodeType === XML_TEXT_NODE ? $node->nodeValue : $dom->saveHTML( $node );
 
-			// Extract tags at the beginning of the line.
-			preg_match( '/^(?:\{[^}]+}\s*)+/i', $trimmed_line, $before_line_tags );
+			if ( ! property_exists( $node, 'tagName' ) || $node->tagName !== 'tr' ) {
+				$content_to_wrap .= $node_text;
 
-			if ( ! empty( $before_line_tags[0] ) ) {
-				// Include the extracted tags at the beginning to the modified content.
-				$modified_content .= trim( $before_line_tags[0] );
-				// Remove the extracted tags from the trimmed line.
-				$trimmed_line = trim( substr( $trimmed_line, strlen( $before_line_tags[0] ) ) );
+				continue;
 			}
 
-			// Extract all smart tags from the remaining content.
-			preg_match_all( '/\{([^}]+)}/i', $trimmed_line, $after_line_tags );
+			// Wrap content before the `tr` tag.
+			$modified_content .= $this->wrap_content_with_row( $content_to_wrap );
 
-			// Remove the smart tags from the content.
-			$content_without_smart_tags = str_replace( $after_line_tags[0], '', $trimmed_line );
+			// Save the `tr` tag without wrapping.
+			$modified_content .= $node_text;
 
-			if ( ! empty( $content_without_smart_tags ) ) {
-				// Wrap the content without the smart tags in a new table row.
-				$modified_content .= '<tr class="smart-tag"><td class="field-name field-value" colspan="2">' . $content_without_smart_tags . '</td></tr>';
-			}
+			$content_to_wrap = '';
+		}
+		// phpcs:enable WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 
-			if ( ! empty( $after_line_tags[0] ) ) {
-				// Move all smart tags to the end of the line after the closing </tr> tag.
-				$modified_content .= implode( ' ', $after_line_tags[0] );
-			}
+		if ( ! wpforms_is_empty_string( $content_to_wrap ) ) {
+			$modified_content .= $this->wrap_content_with_row( $content_to_wrap );
 		}
 
-		// Return the modified content.
 		return $modified_content;
+	}
+
+	/**
+	 * Wrap content to the `tr` tag.
+	 *
+	 * @since 1.9.6
+	 *
+	 * @param string $content Content.
+	 *
+	 * @return string
+	 */
+	private function wrap_content_with_row( string $content ): string {
+
+		$content = trim( $content );
+
+		if ( wpforms_is_empty_string( $content ) ) {
+			return '';
+		}
+
+		return sprintf( '<tr class="smart-tag"><td class="field-name field-value" colspan="2">%s</td></tr>', $content );
 	}
 
 	/**
@@ -1050,7 +1324,7 @@ class Notifications extends Mailer {
 			);
 		}
 
-		return isset( $templates[ $template ] ) ? $templates[ $template ] : $templates;
+		return $templates[ $template ] ?? $templates;
 	}
 
 	/**
@@ -1070,32 +1344,32 @@ class Notifications extends Mailer {
 		$templates = [
 			'classic' => [
 				'name'   => esc_html__( 'Classic', 'wpforms-lite' ),
-				'path'   => __NAMESPACE__ . '\Templates\Classic',
+				'path'   => Templates\Classic::class,
 				'is_pro' => false,
 			],
 			'compact' => [
 				'name'   => esc_html__( 'Compact', 'wpforms-lite' ),
-				'path'   => __NAMESPACE__ . '\Templates\Compact',
+				'path'   => Templates\Compact::class,
 				'is_pro' => false,
 			],
 			'modern'  => [
 				'name'   => esc_html__( 'Modern', 'wpforms-lite' ),
-				'path'   => 'WPForms\Pro\Emails\Templates\Modern',
+				'path'   => Modern::class,
 				'is_pro' => true,
 			],
 			'elegant' => [
 				'name'   => esc_html__( 'Elegant', 'wpforms-lite' ),
-				'path'   => 'WPForms\Pro\Emails\Templates\Elegant',
+				'path'   => Elegant::class,
 				'is_pro' => true,
 			],
 			'tech'    => [
 				'name'   => esc_html__( 'Tech', 'wpforms-lite' ),
-				'path'   => 'WPForms\Pro\Emails\Templates\Tech',
+				'path'   => Tech::class,
 				'is_pro' => true,
 			],
 			'none'    => [
 				'name'   => esc_html__( 'Plain Text', 'wpforms-lite' ),
-				'path'   => __NAMESPACE__ . '\Templates\Plain',
+				'path'   => Templates\Plain::class,
 				'is_pro' => false,
 			],
 		];
@@ -1120,7 +1394,7 @@ class Notifications extends Mailer {
 			unset( $tmpl );
 		}
 
-		return isset( $templates[ $template ] ) ? $templates[ $template ] : $templates;
+		return $templates[ $template ] ?? $templates;
 	}
 
 	/**
@@ -1153,5 +1427,29 @@ class Notifications extends Mailer {
 		}
 
 		return str_replace( [ "\r\n", "\r", "\n" ], '<br/>', $value );
+	}
+
+	/**
+	 * Get the current template name.
+	 *
+	 * @since 1.9.3
+	 *
+	 * @return string
+	 */
+	public function get_current_template(): string {
+
+		return $this->current_template;
+	}
+
+	/**
+	 * Get the current field template markup.
+	 *
+	 * @since 1.9.4
+	 *
+	 * @return string
+	 */
+	public function get_current_field_template(): string {
+
+		return $this->field_template;
 	}
 }

@@ -1,6 +1,6 @@
 <?php
 namespace Woolentor\Modules\Popup_Builder\Frontend;
-
+use WooLentor\Traits\Singleton;
 use Woolentor\Modules\Popup_Builder\Helper;
 use Woolentor\Modules\Popup_Builder\Admin\Manage_Metabox;
 use Woolentor\Modules\Popup_Builder_Pro\Frontend\Popup_Rules_Checker_Pro;
@@ -8,18 +8,7 @@ use Woolentor\Modules\Popup_Builder_Pro\Frontend\Popup_Rules_Checker_Pro;
 if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
 
 class Manage_Popup {
-
-    private static $_instance = null;
-
-    /**
-     * Get Instance
-     */
-    public static function get_instance(){
-        if( is_null( self::$_instance ) ){
-            self::$_instance = new self();
-        }
-        return self::$_instance;
-    }
+    use Singleton;
 
     /**
      * Constructor
@@ -75,15 +64,19 @@ class Manage_Popup {
         );
 
         if( Helper::is_pro_version_active() && class_exists('Woolentor\Modules\Popup_Builder_Pro\Frontend\Popup_Rules_Checker_Pro') ){
-            if( method_exists(Popup_Rules_Checker_Pro::get_instance(),'check_rules') ){
-                $popup_condition_status      = Popup_Rules_Checker_Pro::get_instance()->check_rules( $popup_id, $popup_conditions );
+
+            $rule_checker_obj = method_exists('Woolentor\Modules\Popup_Builder_Pro\Frontend\Popup_Rules_Checker_Pro','instance') ? Popup_Rules_Checker_Pro::instance() : Popup_Rules_Checker_Pro::get_instance();
+
+            if( method_exists($rule_checker_obj,'check_rules') ){
+                $popup_condition_status = $rule_checker_obj->check_rules( $popup_id, $popup_conditions );
             }
             
-            if( method_exists(Popup_Rules_Checker_Pro::get_instance(),'check_advanced_rules') ){
-                $popup_advanced_rules_status = Popup_Rules_Checker_Pro::get_instance()->check_advanced_rules( $popup_id );
+            if( method_exists($rule_checker_obj,'check_advanced_rules') ){
+                $popup_advanced_rules_status = $rule_checker_obj->check_advanced_rules( $popup_id );
             }
+
         } else {
-            $popup_condition_status      = Popup_Rules_Checker::get_instance()->check_rules( $popup_id, $popup_conditions );
+            $popup_condition_status = Popup_Rules_Checker::instance()->check_rules( $popup_id, $popup_conditions );
         }
 
         // Check $popup_condition_status first and then $popup_advanced_rules_status.
@@ -117,8 +110,8 @@ class Manage_Popup {
 
         // Prepare default values so we don't need to check isset() for each value.
         $popup_default_settings = array();
-        $popup_default_settings = array_merge($popup_default_settings, Manage_Metabox::get_instance()->get_default_values('general_fields'));
-        $popup_default_settings = array_merge($popup_default_settings, Manage_Metabox::get_instance()->get_default_values('customization_fields'));
+        $popup_default_settings = array_merge($popup_default_settings, Manage_Metabox::instance()->get_default_values('general_fields'));
+        $popup_default_settings = array_merge($popup_default_settings, Manage_Metabox::instance()->get_default_values('customization_fields'));
 
         // @todo: add the below options later.
         $popup_default_settings['popup_display_as']   = 'modal';
@@ -164,7 +157,7 @@ class Manage_Popup {
 
                     <?php  ?>
                     <span class="wlpb-popup-close-btn <?php echo esc_attr($popup_settings['disable_close_button'] == false ? '' : 'wlpb-d-none') ?>" style="<?php echo esc_attr($popup_close_button_inline_css) ?>">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><rect x="0" fill="none" width="20" height="20"></rect><g><path d="M14.95 6.46L11.41 10l3.54 3.54-1.41 1.41L10 11.42l-3.53 3.53-1.42-1.42L8.58 10 5.05 6.47l1.42-1.42L10 8.58l3.54-3.53z"></path></g></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" width="20" height="20"><rect x="0" fill="none" width="20" height="20"></rect><g><path d="M14.95 6.46L11.41 10l3.54 3.54-1.41 1.41L10 11.42l-3.53 3.53-1.42-1.42L8.58 10 5.05 6.47l1.42-1.42L10 8.58l3.54-3.53z"></path></g></svg>
                     </span>
 
                     <?php $popup_container_inner_inline_css = Helper::generate_inline_css($popup_id, $popup_settings, 'popup_container_inner'); ?>
@@ -182,7 +175,7 @@ class Manage_Popup {
         return get_posts( array(
             'post_type'         => 'woolentor-template',
             'post_status'       => array('publish', 'private', 'draft'),
-            'posts_per_page'    => Helper::get_instance()->get_dropdown_posts_limit(),
+            'posts_per_page'    => Helper::instance()->get_dropdown_posts_limit(),
             'fields'            => 'ids',
             // Include templates where key = woolentor_template_meta_type,vlaue = popup.
             // and key = _wlpb_popup_seetings,value = not empty.
@@ -234,7 +227,7 @@ class Manage_Popup {
         $data_settings['id']        = $popup_id;
 
         // Loop through each group of the fields
-        foreach( Manage_Metabox::get_instance()->get_fields() as $group_name => $group_fields ){
+        foreach( Manage_Metabox::instance()->get_fields() as $group_name => $group_fields ){
 
             // Loop through each fields of the current group
             foreach( $group_fields as $field ){

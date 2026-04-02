@@ -38,6 +38,47 @@ class WPCode_Conditional_Page extends WPCode_Conditional_Type {
 	}
 
 	/**
+	 * Load evaluation-only options (without translations) for frontend use.
+	 * This method is called when translations are not yet loaded to avoid WP 6.7 notices.
+	 *
+	 * @return void
+	 */
+	public function load_evaluation_options() {
+		$this->options = array(
+			'type_of_page'  => array(
+				'callback' => array( $this, 'get_type_of_page' ),
+			),
+			'post_type'     => array(
+				'callback' => array( $this, 'get_current_post_type' ),
+			),
+			'referrer'      => array(
+				'callback' => array( $this, 'get_referer' ),
+			),
+			'taxonomy_page' => array(
+				'callback' => array( $this, 'get_taxonomy' ),
+			),
+			'taxonomy_term' => array(
+				'callback' => array( $this, 'get_term' ),
+			),
+			'page_url'      => array(
+				'callback' => array( $this, 'get_page_url' ),
+			),
+			'post_meta'     => array(
+				'callback' => null, // Pro feature, no callback in free version.
+			),
+			'post_id'       => array(
+				'callback' => null, // Pro feature, no callback in free version.
+			),
+			'page_template' => array(
+				'callback' => null, // Pro feature, no callback in free version.
+			),
+			'post_author'   => array(
+				'callback' => null, // Pro feature, no callback in free version.
+			),
+		);
+	}
+
+	/**
 	 * Set the type options for the admin mainly.
 	 *
 	 * @return void
@@ -115,6 +156,17 @@ class WPCode_Conditional_Page extends WPCode_Conditional_Type {
 				'type'        => 'text',
 				'callback'    => array( $this, 'get_page_url' ),
 			),
+            'post_meta'     => array(
+                'label'       => __( 'Post meta', 'insert-headers-and-footers' ) . ' (PRO)',
+                'description' => __( 'Target specific posts based on custom post meta values.', 'insert-headers-and-footers' ),
+                'type'        => 'text',
+                'options'     => array(),
+                'upgrade'     => array(
+                    'title' => __( 'Post Meta rules are a Pro feature', 'insert-headers-and-footers' ),
+                    'text'  => __( 'Upgrade today to create conditional logic rules for specific pages or posts.', 'insert-headers-and-footers' ),
+                    'link'  => wpcode_utm_url( 'https://wpcode.com/lite/', 'edit-snippet', 'conditional-logic', 'post_meta' ),
+                ),
+            ),
 			'post_id'       => array(
 				'label'       => __( 'Post/Page', 'insert-headers-and-footers' ) . ' (PRO)',
 				'description' => __( 'Pick specific posts or pages to load the snippet on.', 'insert-headers-and-footers' ),
@@ -122,8 +174,30 @@ class WPCode_Conditional_Page extends WPCode_Conditional_Type {
 				'options'     => array(),
 				'upgrade'     => array(
 					'title' => __( 'Post specific rules are a Pro feature', 'insert-headers-and-footers' ),
-					'text'  => __( 'Upgrade today create conditional logic rules for specific pages or posts.', 'insert-headers-and-footers' ),
+					'text'  => __( 'Upgrade today to create conditional logic rules for specific pages or posts.', 'insert-headers-and-footers' ),
 					'link'  => wpcode_utm_url( 'https://wpcode.com/lite/', 'edit-snippet', 'conditional-logic', 'post_id' ),
+				),
+			),
+			'page_template' => array(
+				'label'       => __( 'Page Template', 'insert-headers-and-footers' ) . ' (PRO)',
+				'description' => __( 'Load the snippet only on pages with a specific template.', 'insert-headers-and-footers' ),
+				'type'        => 'select',
+				'options'     => array(),
+				'upgrade'     => array(
+					'title' => __( 'Page Template rules are a Pro feature', 'insert-headers-and-footers' ),
+					'text'  => __( 'Upgrade today to create conditional logic rules for specific page templates.', 'insert-headers-and-footers' ),
+					'link'  => wpcode_utm_url( 'https://wpcode.com/lite/', 'edit-snippet', 'conditional-logic', 'page_template' ),
+				),
+			),
+			'post_author'   => array(
+				'label'       => __( 'Author', 'insert-headers-and-footers' ) . ' (PRO)',
+				'description' => __( 'Load the snippet only on pages with a specific author.', 'insert-headers-and-footers' ),
+				'type'        => 'select',
+				'options'     => array(),
+				'upgrade'     => array(
+					'title' => __( 'Post Author rules are a Pro feature', 'insert-headers-and-footers' ),
+					'text'  => __( 'Upgrade today to create conditional logic rules based on the page/post author.', 'insert-headers-and-footers' ),
+					'link'  => wpcode_utm_url( 'https://wpcode.com/lite/', 'edit-snippet', 'conditional-logic', 'post_author' ),
 				),
 			),
 		);
@@ -225,7 +299,7 @@ class WPCode_Conditional_Page extends WPCode_Conditional_Type {
 	 * @return string
 	 */
 	public function get_referer() {
-		return isset( $_SERVER['HTTP_REFERER'] ) ? $_SERVER['HTTP_REFERER'] : '';
+		return isset( $_SERVER['HTTP_REFERER'] ) ? $_SERVER['HTTP_REFERER'] : '';  // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 	}
 
 	/**

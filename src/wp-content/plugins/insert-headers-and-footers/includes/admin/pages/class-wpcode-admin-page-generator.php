@@ -60,6 +60,13 @@ class WPCode_Admin_Page_Generator extends WPCode_Admin_Page {
 	protected $capability = 'wpcode_edit_php_snippets';
 
 	/**
+	 * Hide the generator menu item.
+	 *
+	 * @var bool
+	 */
+	public $hide_menu = true;
+
+	/**
 	 * Call this just to set the page title translatable.
 	 */
 	public function __construct() {
@@ -81,6 +88,9 @@ class WPCode_Admin_Page_Generator extends WPCode_Admin_Page {
 			$generator = sanitize_text_field( wp_unslash( $_GET['generator'] ) );
 			if ( array_key_exists( $generator, $this->generators ) ) {
 				$this->generator = $generator;
+				if ( isset( $this->generators[ $generator ]->code_type ) ) {
+					$this->code_type = $this->generators[ $generator ]->code_type;
+				}
 			}
 		}
 
@@ -268,5 +278,6 @@ class WPCode_Admin_Page_Generator extends WPCode_Admin_Page {
 		$editor->init_editor();
 
 		wp_enqueue_script( 'jquery-ui-autocomplete' );
+		wp_enqueue_media();
 	}
 }

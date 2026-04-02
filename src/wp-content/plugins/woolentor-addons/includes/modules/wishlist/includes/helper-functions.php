@@ -1,22 +1,4 @@
 <?php
-/**
- * [wishsuite_get_post_list]
- * @param  string $post_type
- * @return [array]
- */
-function wishsuite_get_post_list( $post_type = 'page' ){
-    $options = array();
-    $options['0'] = __('Select','wishsuite');
-    $perpage = -1;
-    $all_post = array( 'posts_per_page' => $perpage, 'post_type'=> $post_type );
-    $post_terms = get_posts( $all_post );
-    if ( ! empty( $post_terms ) && ! is_wp_error( $post_terms ) ){
-        foreach ( $post_terms as $term ) {
-            $options[ $term->ID ] = $term->post_title;
-        }
-        return $options;
-    }
-}
 
 /**
  * [wishsuite_locate_template]
@@ -77,7 +59,7 @@ function wishsuite_get_page_url() {
  * @return [HTML]
  */
 function wishsuite_add_to_cart( $product, $quentity ){
-    return \WishSuite\Frontend\Manage_Wishlist::instance()->add_to_cart_html( $product, $quentity );
+    return class_exists('\WishSuite\Frontend\Manage_Wishlist') ? \WishSuite\Frontend\Manage_Wishlist::instance()->add_to_cart_html( $product, $quentity ) : '';
 }
 
 /**
@@ -128,7 +110,7 @@ function wishsuite_table_heading(){
 
     $field_list = count( wishsuite_table_active_heading() ) > 0 ? wishsuite_table_active_heading() : $active_default_fields;
     foreach ( $field_list as $key => $value ) {
-        $new_list[$key] = \WishSuite\Frontend\Manage_Wishlist::instance()->field_name( $key );
+        $new_list[$key] = class_exists( '\WishSuite\Frontend\Manage_Wishlist' ) ? \WishSuite\Frontend\Manage_Wishlist::instance()->field_name( $key ) : '';
     }
     return $new_list;
 }
